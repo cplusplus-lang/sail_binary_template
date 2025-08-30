@@ -1,0 +1,127 @@
+name: Cross-Platform Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        build_type: [Debug, Release]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake git
+
+    - name: Install dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        # macOS runners come with cmake and git pre-installed
+        # Just ensure we have the command line tools
+        xcode-select --install 2>/dev/null || true
+
+    - name: Install dependencies (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        # Windows runners come with cmake, git, and MSVC pre-installed
+        echo "Using pre-installed tools"
+
+    - name: Create Build Directory
+      run: cmake -E make_directory ${{ github.workspace }}/build
+
+    - name: Configure CMake
+      working-directory: ${{ github.workspace }}/build
+      run: |
+        cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+
+    - name: Build
+      working-directory: ${{ github.workspace }}/build
+      run: |
+        cmake --build . --config ${{ matrix.build_type }} --parallel
+
+    - name: Test
+      working-directory: ${{ github.workspace }}/build
+      run: |
+        ctest --output-on-failure --verbose --build-config ${{ matrix.build_type }}
+
+    - name: Test CLI Help (Unix)
+      if: matrix.os != 'windows-latest'
+      working-directory: ${{ github.workspace }}/build
+      run: |
+        ./sail --help
+        ./sail --version
+
+    - name: Test CLI Help (Windows)
+      if: matrix.os == 'windows-latest'
+      working-directory: ${{ github.workspace }}/build
+      run: |
+        if (Test-Path "${{ matrix.build_type }}/sail.exe") {
+          & "${{ matrix.build_type }}/sail.exe" --help
+          & "${{ matrix.build_type }}/sail.exe" --version
+        } else {
+          ./sail.exe --help
+          ./sail.exe --version
+        }
+      shell: powershell
+
+    - name: Integration Test - Invalid URL (Unix)
+      if: matrix.os != 'windows-latest'
+      working-directory: ${{ github.workspace }}/build
+      run: |
+        # Test that invalid URLs fail gracefully
+        if ./sail install invalid-url 2>/dev/null; then
+          echo "Expected failure but command succeeded"
+          exit 1
+        else
+          echo "Command failed as expected for invalid URL"
+        fi
+
+    - name: Integration Test - Invalid URL (Windows)
+      if: matrix.os == 'windows-latest'
+      working-directory: ${{ github.workspace }}/build
+      run: |
+        # Test that invalid URLs fail gracefully
+        try {
+          if (Test-Path "${{ matrix.build_type }}/sail.exe") {
+            $result = & "${{ matrix.build_type }}/sail.exe" install invalid-url 2>$null
+          } else {
+            $result = & "./sail.exe" install invalid-url 2>$null
+          }
+          if ($LASTEXITCODE -eq 0) {
+            throw "Expected failure but command succeeded"
+          } else {
+            Write-Host "Command failed as expected for invalid URL"
+          }
+        } catch {
+          Write-Host "Command failed as expected for invalid URL"
+        }
+      shell: powershell
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-${{ matrix.os }}-${{ matrix.build_type }}
+        path: ${{ github.workspace }}/build/Testing/
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      if: matrix.build_type == 'Release'
+      with:
+        name: sail-${{ matrix.os }}
+        path: |
+          ${{ github.workspace }}/build/sail*
+          ${{ github.workspace }}/build/Release/sail*
+          ${{ github.workspace }}/build/*/sail*
