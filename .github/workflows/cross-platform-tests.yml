@@ -17,7 +17,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Install dependencies (Ubuntu)
       if: matrix.os == 'ubuntu-latest'
@@ -110,14 +110,14 @@ jobs:
       shell: powershell
 
     - name: Upload test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: test-results-${{ matrix.os }}-${{ matrix.build_type }}
         path: ${{ github.workspace }}/build/Testing/
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: matrix.build_type == 'Release'
       with:
         name: sail-${{ matrix.os }}
