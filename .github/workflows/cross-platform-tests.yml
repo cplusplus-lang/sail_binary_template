@@ -95,17 +95,20 @@ jobs:
         # Test that invalid URLs fail gracefully
         try {
           if (Test-Path "${{ matrix.build_type }}/sail.exe") {
-            $result = & "${{ matrix.build_type }}/sail.exe" install invalid-url 2>$null
+            $null = & "${{ matrix.build_type }}/sail.exe" install invalid-url 2>$null
           } else {
-            $result = & "./sail.exe" install invalid-url 2>$null
+            $null = & "./sail.exe" install invalid-url 2>$null
           }
           if ($LASTEXITCODE -eq 0) {
-            throw "Expected failure but command succeeded"
+            Write-Host "Expected failure but command succeeded"
+            exit 1
           } else {
             Write-Host "Command failed as expected for invalid URL"
+            exit 0
           }
         } catch {
           Write-Host "Command failed as expected for invalid URL"
+          exit 0
         }
       shell: powershell
 
