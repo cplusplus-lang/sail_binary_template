@@ -145,7 +145,7 @@ jobs:
         # Verify the binary was installed and is executable
         $expectedPath = "$env:USERPROFILE/.sail/bin/names.exe"
         if (Test-Path $expectedPath) {
-          Write-Host "✓ Binary installed successfully"
+          Write-Host "Binary installed successfully"
           # Test that the binary can be executed (should not crash)
           try {
             $timeout = 10
@@ -157,7 +157,7 @@ jobs:
             Write-Host "Binary executed (expected behavior)"
           }
         } else {
-          Write-Host "✗ Binary not found in expected location: $expectedPath"
+          Write-Host "Binary not found in expected location: $expectedPath"
           exit 1
         }
       shell: powershell
