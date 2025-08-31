@@ -14,6 +14,8 @@ add_executable(sail
     src/cli.cpp
     src/install_command.cpp
     src/new_command.cpp
+    src/build_command.cpp
+    src/run_command.cpp
     src/utils.cpp
     src/git_utils.cpp
     src/cmake_builder.cpp
@@ -46,6 +48,8 @@ add_library(saillib
     src/cli.cpp
     src/install_command.cpp
     src/new_command.cpp
+    src/build_command.cpp
+    src/run_command.cpp
     src/utils.cpp
     src/git_utils.cpp
     src/cmake_builder.cpp
@@ -73,6 +77,8 @@ add_executable(sail_tests
     tests/test_git_utils.cpp
     tests/test_install_command.cpp
     tests/test_new_command.cpp
+    tests/test_build_command.cpp
+    tests/test_run_command.cpp
     tests/test_main.cpp
     tests/test_package_registry.cpp
 )
