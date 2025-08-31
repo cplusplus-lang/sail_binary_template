@@ -127,4 +127,27 @@ void Utils::makeExecutable(const std::string& path) {
 #endif
 }
 
+std::string Utils::findProjectRoot(const std::string& startPath) {
+    std::filesystem::path currentPath = std::filesystem::absolute(startPath);
+    
+    // Search upwards for project indicators
+    while (currentPath != currentPath.root_path()) {
+        // Check for Sail project
+        if (std::filesystem::exists(currentPath / "Sail.toml")) {
+            return currentPath.string();
+        }
+        
+        // Check for regular CMake project
+        if (std::filesystem::exists(currentPath / "CMakeLists.txt")) {
+            return currentPath.string();
+        }
+        
+        // Move up one directory
+        currentPath = currentPath.parent_path();
+    }
+    
+    // If no project root found, return the original starting path
+    return std::filesystem::absolute(startPath).string();
+}
+
 } // namespace sail

@@ -46,13 +46,16 @@ TEST_CASE("NewCommand creates binary project with correct structure", "[new_comm
     
     REQUIRE(result == 0);
     
-    // Check directory structure
+    // Check directory structure - CMakeLists.txt is now created by 'sail build'
     REQUIRE(std::filesystem::exists("test_project"));
     REQUIRE(std::filesystem::exists("test_project/src"));
-    REQUIRE(std::filesystem::exists("test_project/CMakeLists.txt"));
     REQUIRE(std::filesystem::exists("test_project/src/main.cpp"));
     REQUIRE(std::filesystem::exists("test_project/Sail.toml"));
     REQUIRE(std::filesystem::exists("test_project/.gitignore"));
+    
+    // CMakeLists.txt should NOT exist after 'sail new'
+    REQUIRE(!std::filesystem::exists("test_project/CMakeLists.txt"));
+    REQUIRE(!std::filesystem::exists("test_project/build"));
 }
 
 TEST_CASE("NewCommand creates library project with correct structure", "[new_command]") {
@@ -64,32 +67,39 @@ TEST_CASE("NewCommand creates library project with correct structure", "[new_com
     
     REQUIRE(result == 0);
     
-    // Check directory structure
+    // Check directory structure - CMakeLists.txt is now created by 'sail build'
     REQUIRE(std::filesystem::exists("test_lib"));
     REQUIRE(std::filesystem::exists("test_lib/src"));
     REQUIRE(std::filesystem::exists("test_lib/include"));
-    REQUIRE(std::filesystem::exists("test_lib/CMakeLists.txt"));
     REQUIRE(std::filesystem::exists("test_lib/src/lib.cpp"));
     REQUIRE(std::filesystem::exists("test_lib/include/test_lib.h"));
     REQUIRE(std::filesystem::exists("test_lib/Sail.toml"));
     REQUIRE(std::filesystem::exists("test_lib/.gitignore"));
+    
+    // CMakeLists.txt should NOT exist after 'sail new'
+    REQUIRE(!std::filesystem::exists("test_lib/CMakeLists.txt"));
+    REQUIRE(!std::filesystem::exists("test_lib/build"));
 }
 
-TEST_CASE("CMakeLists.txt contains correct content", "[new_command]") {
+TEST_CASE("NewCommand does not create CMake files", "[new_command]") {
     NewCommandTestFixture fixture;
     sail::NewCommand cmd;
     std::vector<std::string> args = {"test_project"};
     
-    cmd.execute(args);
+    int result = cmd.execute(args);
+    REQUIRE(result == 0);
     
-    // Check root CMakeLists.txt has forwarding content
-    REQUIRE(fixture.fileContains("test_project/CMakeLists.txt", "project(test_project"));
-    REQUIRE(fixture.fileContains("test_project/CMakeLists.txt", "include(build/cmake/CMakeLists.txt)"));
+    // Verify that NO CMake files are created by 'sail new'
+    REQUIRE(!std::filesystem::exists("test_project/CMakeLists.txt"));
+    REQUIRE(!std::filesystem::exists("test_project/build"));
+    REQUIRE(!std::filesystem::exists("test_project/build/cmake"));
+    REQUIRE(!std::filesystem::exists("test_project/build/cmake/CMakeLists.txt"));
+    REQUIRE(!std::filesystem::exists("test_project/build/cmake/SailToml.cmake"));
     
-    // Check build/cmake/CMakeLists.txt has actual content
-    REQUIRE(fixture.fileContains("test_project/build/cmake/CMakeLists.txt", "add_executable(test_project"));
-    REQUIRE(fixture.fileContains("test_project/build/cmake/CMakeLists.txt", "src/main.cpp"));
-    REQUIRE(fixture.fileContains("test_project/build/cmake/CMakeLists.txt", "CMAKE_CXX_STANDARD 17"));
+    // But essential project files should exist
+    REQUIRE(std::filesystem::exists("test_project/Sail.toml"));
+    REQUIRE(std::filesystem::exists("test_project/src/main.cpp"));
+    REQUIRE(std::filesystem::exists("test_project/.gitignore"));
 }
 
 TEST_CASE("main.cpp contains hello world", "[new_command]") {
@@ -155,26 +165,25 @@ TEST_CASE("NewCommand sanitizes project names", "[new_command]") {
     REQUIRE(fixture.fileContains("my-project_123/Sail.toml", "name = \"my-project_123\""));
 }
 
-TEST_CASE("Created project can be built and run", "[new_command]") {
+TEST_CASE("Created project has essential files only", "[new_command]") {
     NewCommandTestFixture fixture;
     sail::NewCommand cmd;
-    std::vector<std::string> args = {"buildable_project"};
+    std::vector<std::string> args = {"essential_project"};
     
     int result = cmd.execute(args);
     REQUIRE(result == 0);
     
-    // Try to build the created project
-    std::filesystem::path projectPath = fixture.testDir / "buildable_project";
-    std::filesystem::path buildDir = projectPath / "build";
-    std::filesystem::create_directories(buildDir);
+    // Check essential files exist
+    REQUIRE(std::filesystem::exists("essential_project/Sail.toml"));
+    REQUIRE(std::filesystem::exists("essential_project/src/main.cpp"));
+    REQUIRE(std::filesystem::exists("essential_project/.gitignore"));
     
-    // This test verifies structure is correct for building
-    // Actual build testing is done in integration tests
-    REQUIRE(std::filesystem::exists(projectPath / "CMakeLists.txt"));
-    REQUIRE(std::filesystem::exists(projectPath / "src/main.cpp"));
+    // Check CMake files do NOT exist (created by build command)
+    REQUIRE(!std::filesystem::exists("essential_project/CMakeLists.txt"));
+    REQUIRE(!std::filesystem::exists("essential_project/build"));
 }
 
-TEST_CASE("Created library project has correct structure", "[new_command]") {
+TEST_CASE("Created library project has essential files only", "[new_command]") {
     NewCommandTestFixture fixture;
     sail::NewCommand cmd;
     std::vector<std::string> args = {"mylib", "--lib"};
@@ -182,13 +191,17 @@ TEST_CASE("Created library project has correct structure", "[new_command]") {
     int result = cmd.execute(args);
     REQUIRE(result == 0);
     
-    // Check root CMakeLists.txt has forwarding content
-    REQUIRE(fixture.fileContains("mylib/CMakeLists.txt", "project(mylib"));
-    REQUIRE(fixture.fileContains("mylib/CMakeLists.txt", "include(build/cmake/CMakeLists.txt)"));
+    // Check essential library files exist
+    REQUIRE(std::filesystem::exists("mylib/Sail.toml"));
+    REQUIRE(std::filesystem::exists("mylib/include/mylib.h"));
+    REQUIRE(std::filesystem::exists("mylib/src/lib.cpp"));
+    REQUIRE(std::filesystem::exists("mylib/.gitignore"));
     
-    // Check library-specific content in build/cmake/CMakeLists.txt
-    REQUIRE(fixture.fileContains("mylib/build/cmake/CMakeLists.txt", "add_library(mylib"));
-    REQUIRE(fixture.fileContains("mylib/build/cmake/CMakeLists.txt", "target_include_directories"));
+    // Check CMake files do NOT exist (created by build command)
+    REQUIRE(!std::filesystem::exists("mylib/CMakeLists.txt"));
+    REQUIRE(!std::filesystem::exists("mylib/build"));
+    
+    // Check file contents
     REQUIRE(fixture.fileContains("mylib/include/mylib.h", "namespace mylib"));
     REQUIRE(fixture.fileContains("mylib/src/lib.cpp", "namespace mylib"));
 }
@@ -203,13 +216,15 @@ TEST_CASE("NewCommand creates project in subdirectory", "[new_command]") {
     
     // Check directory structure
     REQUIRE(std::filesystem::exists("subdir/nested_project"));
-    REQUIRE(std::filesystem::exists("subdir/nested_project/src"));
-    REQUIRE(std::filesystem::exists("subdir/nested_project/CMakeLists.txt"));
     REQUIRE(std::filesystem::exists("subdir/nested_project/src/main.cpp"));
     REQUIRE(std::filesystem::exists("subdir/nested_project/Sail.toml"));
+    REQUIRE(std::filesystem::exists("subdir/nested_project/.gitignore"));
     
-    // Check that project name in files is correct (not the full path)
-    REQUIRE(fixture.fileContains("subdir/nested_project/CMakeLists.txt", "project(nested_project"));
+    // CMake files should NOT exist
+    REQUIRE(!std::filesystem::exists("subdir/nested_project/CMakeLists.txt"));
+    REQUIRE(!std::filesystem::exists("subdir/nested_project/build"));
+    
+    // Check project name in Sail.toml (should be extracted from path)
     REQUIRE(fixture.fileContains("subdir/nested_project/Sail.toml", "name = \"nested_project\""));
 }
 
@@ -224,4 +239,8 @@ TEST_CASE("NewCommand handles paths with special characters", "[new_command]") {
     // Should sanitize only the filename, not the directory path
     REQUIRE(std::filesystem::exists("projects/my-awesome_project"));
     REQUIRE(fixture.fileContains("projects/my-awesome_project/Sail.toml", "name = \"my-awesome_project\""));
+    
+    // CMake files should NOT exist
+    REQUIRE(!std::filesystem::exists("projects/my-awesome_project/CMakeLists.txt"));
+    REQUIRE(!std::filesystem::exists("projects/my-awesome_project/build"));
 }

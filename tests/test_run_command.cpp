@@ -165,3 +165,41 @@ TEST_CASE("RunCommand::execute extracts project name from CMakeLists.txt", "[run
     // Should attempt to build and run test_project
     REQUIRE(std::filesystem::exists("build/debug"));
 }
+
+TEST_CASE("RunCommand::execute works from project subdirectory", "[run_command][subfolder]") {
+    RunCommandTestFixture fixture;
+    sail::RunCommand runCmd;
+    
+    // Create a subdirectory and change to it
+    std::filesystem::create_directories("subdir/nested");
+    std::filesystem::current_path("subdir/nested");
+    
+    // Run from subdirectory should work
+    std::vector<std::string> args;
+    int result = runCmd.execute(args);
+    
+    // Should create build directory in project root
+    REQUIRE(std::filesystem::exists("build/debug"));
+    
+    // Change back to project root for cleanup
+    std::filesystem::current_path("../..");
+}
+
+TEST_CASE("RunCommand::execute handles subfolder with release flag", "[run_command][subfolder]") {
+    RunCommandTestFixture fixture;
+    sail::RunCommand runCmd;
+    
+    // Create a subdirectory and change to it  
+    std::filesystem::create_directories("src/components");
+    std::filesystem::current_path("src/components");
+    
+    // Run with release flag from subdirectory
+    std::vector<std::string> args = {"--release", "--verbose"};
+    int result = runCmd.execute(args);
+    
+    // Should create release build in project root
+    REQUIRE(std::filesystem::exists("build/release"));
+    
+    // Change back to project root for cleanup
+    std::filesystem::current_path("../..");
+}

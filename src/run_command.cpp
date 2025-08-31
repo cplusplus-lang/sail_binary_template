@@ -18,6 +18,19 @@ int RunCommand::execute(const std::vector<std::string>& args) {
         }
     }
     
+    // Find project root and change to it
+    std::string projectRoot = Utils::findProjectRoot();
+    std::filesystem::path originalDir = std::filesystem::current_path();
+    if (originalDir != std::filesystem::absolute(projectRoot)) {
+        try {
+            std::filesystem::current_path(projectRoot);
+            std::cout << "Changed to project root: " << projectRoot << std::endl;
+        } catch (const std::exception& e) {
+            std::cerr << "Error: Could not change to project root: " << e.what() << std::endl;
+            return 1;
+        }
+    }
+    
     // Determine build configuration
     bool release = isReleaseBuild(args);
     bool verbose = isVerbose(args);
@@ -161,6 +174,24 @@ int RunCommand::runExecutable(const std::string& executablePath, const std::vect
 }
 
 std::string RunCommand::getProjectName() const {
+    // First try to get project name from Sail.toml
+    std::ifstream sailFile("Sail.toml");
+    if (sailFile) {
+        std::string line;
+        while (std::getline(sailFile, line)) {
+            // Look for name = "project_name"
+            size_t namePos = line.find("name = \"");
+            if (namePos != std::string::npos) {
+                size_t start = namePos + 8; // length of "name = \""
+                size_t end = line.find("\"", start);
+                if (end != std::string::npos) {
+                    return line.substr(start, end - start);
+                }
+            }
+        }
+    }
+    
+    // Fall back to CMakeLists.txt for backwards compatibility
     std::ifstream file("CMakeLists.txt");
     if (!file) {
         return "";
@@ -171,11 +202,17 @@ std::string RunCommand::getProjectName() const {
         // Look for project() declaration
         size_t pos = line.find("project(");
         if (pos != std::string::npos) {
-            // Extract project name
+            // Extract project name - handle both ${SAIL_PROJECT_NAME} and literal names
             size_t start = pos + 8; // length of "project("
             size_t end = line.find_first_of(" \t)", start);
             if (end != std::string::npos) {
-                return line.substr(start, end - start);
+                std::string projectDecl = line.substr(start, end - start);
+                // If it's a CMake variable, we can't resolve it here, so try Sail.toml again
+                if (projectDecl.find("${") != std::string::npos) {
+                    // Already tried Sail.toml above, return empty if we couldn't parse it
+                    return "";
+                }
+                return projectDecl;
             }
         }
     }

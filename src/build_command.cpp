@@ -2,6 +2,7 @@
 #include "utils.h"
 #include <iostream>
 #include <filesystem>
+#include <fstream>
 #include <cstdlib>
 
 namespace sail {
@@ -15,11 +16,30 @@ int BuildCommand::execute(const std::vector<std::string>& args) {
         }
     }
     
+    // Find project root and change to it
+    std::string projectRoot = Utils::findProjectRoot();
+    std::filesystem::path originalDir = std::filesystem::current_path();
+    if (originalDir != std::filesystem::absolute(projectRoot)) {
+        try {
+            std::filesystem::current_path(projectRoot);
+            std::cout << "Changed to project root: " << projectRoot << std::endl;
+        } catch (const std::exception& e) {
+            std::cerr << "Error: Could not change to project root: " << e.what() << std::endl;
+            return 1;
+        }
+    }
+    
     // Determine build type (default is debug)
     bool release = isReleaseBuild(args);
     bool verbose = isVerbose(args);
     
     std::string buildDir = getBuildDir(release);
+    
+    // Ensure CMake structure exists before building
+    if (!ensureCMakeStructure()) {
+        std::cerr << "Error: Failed to set up CMake project structure\n";
+        return 1;
+    }
     
     std::cout << "Building " << (release ? "release" : "debug") << " configuration...\n";
     
@@ -126,6 +146,199 @@ void BuildCommand::printBuildHelp() const {
     std::cout << "Build artifacts will be placed in:\n";
     std::cout << "    build/debug/    (for debug builds)\n";
     std::cout << "    build/release/  (for release builds)\n";
+}
+
+bool BuildCommand::ensureCMakeStructure() const {
+    // Check if Sail.toml exists - if not, this is a regular CMake project
+    if (!std::filesystem::exists("Sail.toml")) {
+        // No Sail.toml found - assume this is a regular CMake project, skip generation
+        return true;
+    }
+    
+    // Only generate CMake files if they don't exist or are outdated
+    bool needsGeneration = false;
+    
+    if (!std::filesystem::exists("CMakeLists.txt")) {
+        needsGeneration = true;
+    }
+    
+    if (!std::filesystem::exists("build/cmake")) {
+        needsGeneration = true;
+    }
+    
+    if (needsGeneration) {
+        std::cout << "Setting up CMake project structure...\n";
+        
+        // Create build/cmake directory
+        if (!createBuildCMakeDirectory()) {
+            return false;
+        }
+        
+        // Create root CMakeLists.txt
+        if (!createRootCMakeListsFile()) {
+            return false;
+        }
+        
+        std::cout << "CMake project structure created.\n";
+    }
+    
+    return true;
+}
+
+bool BuildCommand::createRootCMakeListsFile() const {
+    std::ofstream file("CMakeLists.txt");
+    
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not create CMakeLists.txt\n";
+        return false;
+    }
+    
+    file << "# Forwarding CMakeLists.txt - DO NOT EDIT\n";
+    file << "# The actual CMake configuration is in build/cmake/CMakeLists.txt\n\n";
+    file << "cmake_minimum_required(VERSION 3.20)\n\n";
+    file << "# Parse Sail.toml for project name and version\n";
+    file << "include(build/cmake/SailToml.cmake)\n";
+    file << "sail_parse_toml()\n\n";
+    file << "project(${SAIL_PROJECT_NAME} VERSION ${SAIL_PROJECT_VERSION})\n\n";
+    file << "include(build/cmake/CMakeLists.txt)\n";
+    
+    file.close();
+    return true;
+}
+
+bool BuildCommand::createBuildCMakeDirectory() const {
+    std::string buildCmakeDir = "build/cmake";
+    
+    if (!Utils::createDirectoryRecursive(buildCmakeDir)) {
+        std::cerr << "Error: Could not create build/cmake directory\n";
+        return false;
+    }
+    
+    // Create the TOML parsing module
+    if (!createSailTomlModule(buildCmakeDir)) {
+        return false;
+    }
+    
+    // Create the actual CMakeLists.txt
+    std::string projectName = getProjectNameFromToml();
+    bool isBin = !isLibraryProject();
+    
+    if (!createBuildCMakeListsFile(buildCmakeDir, projectName, isBin)) {
+        return false;
+    }
+    
+    return true;
+}
+
+bool BuildCommand::createSailTomlModule(const std::string& buildCmakeDir) const {
+    std::string moduleFile = buildCmakeDir + "/SailToml.cmake";
+    std::ofstream file(moduleFile);
+    
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not create SailToml.cmake\n";
+        return false;
+    }
+    
+    file << "# Sail TOML Parser Module\n";
+    file << "# Parses Sail.toml file for project name and version\n\n";
+    file << "function(sail_parse_toml)\n";
+    file << "    # Check if Sail.toml exists\n";
+    file << "    if(NOT EXISTS \"${CMAKE_CURRENT_SOURCE_DIR}/Sail.toml\")\n";
+    file << "        message(FATAL_ERROR \"Sail.toml not found in project root\")\n";
+    file << "    endif()\n\n";
+    file << "    # Read the TOML file\n";
+    file << "    file(READ \"${CMAKE_CURRENT_SOURCE_DIR}/Sail.toml\" SAIL_TOML_CONTENT)\n\n";
+    file << "    # Parse project name (look under [package] section)\n";
+    file << "    string(REGEX MATCH \"\\\\[package\\\\][^\\\\[]*name = \\\"([^\\\"]+)\\\"\" _ \"${SAIL_TOML_CONTENT}\")\n";
+    file << "    if(NOT CMAKE_MATCH_1)\n";
+    file << "        message(FATAL_ERROR \"Could not parse project name from Sail.toml\")\n";
+    file << "    endif()\n";
+    file << "    set(SAIL_PROJECT_NAME \"${CMAKE_MATCH_1}\" PARENT_SCOPE)\n\n";
+    file << "    # Parse project version (look under [package] section)\n";
+    file << "    string(REGEX MATCH \"\\\\[package\\\\][^\\\\[]*version = \\\"([^\\\"]+)\\\"\" _ \"${SAIL_TOML_CONTENT}\")\n";
+    file << "    if(NOT CMAKE_MATCH_1)\n";
+    file << "        message(WARNING \"Could not parse project version from Sail.toml, using 1.0.0\")\n";
+    file << "        set(SAIL_PROJECT_VERSION \"1.0.0\" PARENT_SCOPE)\n";
+    file << "    else()\n";
+    file << "        set(SAIL_PROJECT_VERSION \"${CMAKE_MATCH_1}\" PARENT_SCOPE)\n";
+    file << "    endif()\n\n";
+    file << "    # Optional: Parse project description (look under [package] section)\n";
+    file << "    string(REGEX MATCH \"\\\\[package\\\\][^\\\\[]*description = \\\"([^\\\"]+)\\\"\" _ \"${SAIL_TOML_CONTENT}\")\n";
+    file << "    if(CMAKE_MATCH_1)\n";
+    file << "        set(SAIL_PROJECT_DESCRIPTION \"${CMAKE_MATCH_1}\" PARENT_SCOPE)\n";
+    file << "    endif()\n\n";
+    file << "    # Debug output (optional)\n";
+    file << "    message(STATUS \"Sail project: ${SAIL_PROJECT_NAME} v${SAIL_PROJECT_VERSION}\")\n";
+    file << "endfunction()\n";
+    
+    file.close();
+    return true;
+}
+
+bool BuildCommand::createBuildCMakeListsFile(const std::string& buildCmakeDir, const std::string& projectName, bool isBin) const {
+    std::string cmakeFile = buildCmakeDir + "/CMakeLists.txt";
+    std::ofstream file(cmakeFile);
+    
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not create build/cmake/CMakeLists.txt\n";
+        return false;
+    }
+    
+    file << "# Use project name from Sail.toml\n";
+    file << "set(CMAKE_CXX_STANDARD 17)\n";
+    file << "set(CMAKE_CXX_STANDARD_REQUIRED ON)\n\n";
+    
+    if (isBin) {
+        file << "add_executable(${SAIL_PROJECT_NAME}\n";
+        file << "    src/main.cpp\n";
+        file << ")\n";
+    } else {
+        file << "add_library(${SAIL_PROJECT_NAME}\n";
+        file << "    src/lib.cpp\n";
+        file << ")\n\n";
+        file << "target_include_directories(${SAIL_PROJECT_NAME} PUBLIC include)\n";
+    }
+    
+    file.close();
+    return true;
+}
+
+bool BuildCommand::isLibraryProject() const {
+    // Check if this is a library project by looking for include directory
+    return std::filesystem::exists("include");
+}
+
+std::string BuildCommand::getProjectNameFromToml() const {
+    // Simple TOML parsing to get project name
+    std::ifstream file("Sail.toml");
+    if (!file.is_open()) {
+        return "unknown_project";
+    }
+    
+    std::string line;
+    bool inPackageSection = false;
+    
+    while (std::getline(file, line)) {
+        if (line.find("[package]") != std::string::npos) {
+            inPackageSection = true;
+            continue;
+        }
+        
+        if (inPackageSection && line.find("[") != std::string::npos && line.find("[package]") == std::string::npos) {
+            // We've left the package section
+            break;
+        }
+        
+        if (inPackageSection && line.find("name = \"") != std::string::npos) {
+            size_t start = line.find("name = \"") + 8;
+            size_t end = line.find("\"", start);
+            if (end != std::string::npos) {
+                return line.substr(start, end - start);
+            }
+        }
+    }
+    
+    return "unknown_project";
 }
 
 } // namespace sail

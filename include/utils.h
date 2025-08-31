@@ -16,6 +16,7 @@ public:
     static bool copyFile(const std::string& source, const std::string& destination);
     static bool isExecutable(const std::string& path);
     static void makeExecutable(const std::string& path);
+    static std::string findProjectRoot(const std::string& startPath = ".");
 };
 
 } // namespace sail

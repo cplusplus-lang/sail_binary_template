@@ -238,3 +238,138 @@ TEST_CASE("Utils::removeDirectory deletes directory and contents", "[utils]") {
     REQUIRE_FALSE(std::filesystem::exists(subDir));
     REQUIRE_FALSE(std::filesystem::exists(subFile));
 }
+
+TEST_CASE("Utils::findProjectRoot finds Sail.toml project", "[utils][project_root]") {
+    UtilsTestFixture fixture;
+    auto originalDir = std::filesystem::current_path();
+    
+    try {
+        // Create project structure with Sail.toml
+        auto projectDir = fixture.testDir / "myproject";
+        auto subDir = projectDir / "src" / "components";
+        std::filesystem::create_directories(subDir);
+        
+        // Create Sail.toml in project root
+        std::ofstream tomlFile(projectDir / "Sail.toml");
+        tomlFile << "[package]\nname = \"test_project\"\n";
+        tomlFile.close();
+        
+        // Change to subdirectory
+        std::filesystem::current_path(subDir);
+        
+        // Should find the project root
+        std::string projectRoot = sail::Utils::findProjectRoot();
+        REQUIRE(std::filesystem::canonical(projectRoot) == std::filesystem::canonical(projectDir));
+    } catch (...) {
+        // Ensure we always restore directory
+        if (std::filesystem::exists(originalDir)) {
+            std::filesystem::current_path(originalDir);
+        }
+        throw;
+    }
+    
+    // Restore directory
+    if (std::filesystem::exists(originalDir)) {
+        std::filesystem::current_path(originalDir);
+    }
+}
+
+TEST_CASE("Utils::findProjectRoot finds CMakeLists.txt project", "[utils][project_root]") {
+    UtilsTestFixture fixture;
+    auto originalDir = std::filesystem::current_path();
+    
+    try {
+        // Create project structure with CMakeLists.txt
+        auto projectDir = fixture.testDir / "cmake_project";
+        auto subDir = projectDir / "tests" / "unit";
+        std::filesystem::create_directories(subDir);
+        
+        // Create CMakeLists.txt in project root
+        std::ofstream cmakeFile(projectDir / "CMakeLists.txt");
+        cmakeFile << "cmake_minimum_required(VERSION 3.20)\nproject(test)\n";
+        cmakeFile.close();
+        
+        // Change to subdirectory
+        std::filesystem::current_path(subDir);
+        
+        // Should find the project root
+        std::string projectRoot = sail::Utils::findProjectRoot();
+        REQUIRE(std::filesystem::canonical(projectRoot) == std::filesystem::canonical(projectDir));
+    } catch (...) {
+        if (std::filesystem::exists(originalDir)) {
+            std::filesystem::current_path(originalDir);
+        }
+        throw;
+    }
+    
+    // Restore directory
+    if (std::filesystem::exists(originalDir)) {
+        std::filesystem::current_path(originalDir);
+    }
+}
+
+TEST_CASE("Utils::findProjectRoot prefers Sail.toml over CMakeLists.txt", "[utils][project_root]") {
+    UtilsTestFixture fixture;
+    auto originalDir = std::filesystem::current_path();
+    
+    try {
+        // Create nested project structure
+        auto outerDir = fixture.testDir / "outer";
+        auto innerDir = outerDir / "inner";
+        auto workDir = innerDir / "work";
+        std::filesystem::create_directories(workDir);
+        
+        // Create CMakeLists.txt in outer directory
+        std::ofstream cmakeFile(outerDir / "CMakeLists.txt");
+        cmakeFile << "cmake_minimum_required(VERSION 3.20)\nproject(outer)\n";
+        cmakeFile.close();
+        
+        // Create Sail.toml in inner directory
+        std::ofstream tomlFile(innerDir / "Sail.toml");
+        tomlFile << "[package]\nname = \"inner\"\n";
+        tomlFile.close();
+        
+        // Change to work directory
+        std::filesystem::current_path(workDir);
+        
+        // Should find the inner directory (Sail.toml takes precedence)
+        std::string projectRoot = sail::Utils::findProjectRoot();
+        REQUIRE(std::filesystem::canonical(projectRoot) == std::filesystem::canonical(innerDir));
+    } catch (...) {
+        if (std::filesystem::exists(originalDir)) {
+            std::filesystem::current_path(originalDir);
+        }
+        throw;
+    }
+    
+    // Restore directory
+    if (std::filesystem::exists(originalDir)) {
+        std::filesystem::current_path(originalDir);
+    }
+}
+
+TEST_CASE("Utils::findProjectRoot returns current path when no project found", "[utils][project_root]") {
+    UtilsTestFixture fixture;
+    auto originalDir = std::filesystem::current_path();
+    
+    try {
+        // Create directory with no project indicators
+        auto testDir = fixture.testDir / "no_project";
+        std::filesystem::create_directories(testDir);
+        std::filesystem::current_path(testDir);
+        
+        // Should return the current directory as fallback
+        std::string projectRoot = sail::Utils::findProjectRoot();
+        REQUIRE(std::filesystem::canonical(projectRoot) == std::filesystem::canonical(testDir));
+    } catch (...) {
+        if (std::filesystem::exists(originalDir)) {
+            std::filesystem::current_path(originalDir);
+        }
+        throw;
+    }
+    
+    // Restore directory
+    if (std::filesystem::exists(originalDir)) {
+        std::filesystem::current_path(originalDir);
+    }
+}

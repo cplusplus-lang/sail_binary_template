@@ -10,7 +10,6 @@ public:
 
 private:
     bool createProject(const std::string& projectName, const std::string& projectPath, bool isBin = true);
-    bool createCMakeListsFile(const std::string& projectPath, const std::string& projectName, bool isBin);
     bool createSourceFile(const std::string& projectPath, const std::string& projectName, bool isBin);
     bool createSailTomlFile(const std::string& projectPath, const std::string& projectName);
     bool createGitIgnoreFile(const std::string& projectPath);
