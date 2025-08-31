@@ -1,5 +1,6 @@
 #include "cli.h"
 #include "install_command.h"
+#include "new_command.h"
 #include "package_registry.h"
 #include <iostream>
 #include <iomanip>
@@ -36,6 +37,14 @@ int CLI::run(int argc, char* argv[]) {
         return executeList();
     }
     
+    if (command == "new") {
+        std::vector<std::string> args;
+        for (int i = 2; i < argc; ++i) {
+            args.push_back(argv[i]);
+        }
+        return executeNew(args);
+    }
+    
     std::cerr << "Unknown command: " << command << std::endl;
     printHelp();
     return 1;
@@ -50,11 +59,14 @@ void CLI::printHelp() const {
     std::cout << "    -V, --version    Print version information\n\n";
     std::cout << "SUBCOMMANDS:\n";
     std::cout << "    install          Install a package from a Git repository or package name\n";
-    std::cout << "    list             List available packages in the registry\n\n";
+    std::cout << "    list             List available packages in the registry\n";
+    std::cout << "    new              Create a new Sail project\n\n";
     std::cout << "EXAMPLES:\n";
     std::cout << "    sail install names                                  # Install from registry\n";
     std::cout << "    sail install https://github.com/user/repo.git      # Install from URL\n";
     std::cout << "    sail list                                           # Show available packages\n";
+    std::cout << "    sail new hello_world                                # Create a new binary project\n";
+    std::cout << "    sail new --lib my_library                           # Create a new library project\n";
 }
 
 void CLI::printVersion() const {
@@ -108,6 +120,11 @@ int CLI::executeList() const {
     std::cout << "   or: sail install <git-url>\n";
     
     return 0;
+}
+
+int CLI::executeNew(const std::vector<std::string>& args) {
+    NewCommand newCmd;
+    return newCmd.execute(args);
 }
 
 } // namespace sail

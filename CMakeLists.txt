@@ -13,6 +13,7 @@ add_executable(sail
     src/main.cpp
     src/cli.cpp
     src/install_command.cpp
+    src/new_command.cpp
     src/utils.cpp
     src/git_utils.cpp
     src/cmake_builder.cpp
@@ -31,21 +32,20 @@ endif()
 # Testing
 include(FetchContent)
 
-# Fetch GoogleTest
+# Fetch Catch2
 FetchContent_Declare(
-    googletest
-    GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG release-1.12.1
+    Catch2
+    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+    GIT_TAG v3.10.0
 )
 
-# For Windows: Prevent overriding the parent project's compiler/linker settings
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest)
+FetchContent_MakeAvailable(Catch2)
 
 # Create a library for the main functionality (excluding main.cpp)
 add_library(saillib
     src/cli.cpp
     src/install_command.cpp
+    src/new_command.cpp
     src/utils.cpp
     src/git_utils.cpp
     src/cmake_builder.cpp
@@ -72,17 +72,16 @@ add_executable(sail_tests
     tests/test_utils.cpp
     tests/test_git_utils.cpp
     tests/test_install_command.cpp
+    tests/test_new_command.cpp
     tests/test_main.cpp
     tests/test_package_registry.cpp
 )
 
 target_link_libraries(sail_tests
     saillib
-    gtest_main
-    gmock_main
+    Catch2::Catch2WithMain
 )
 
-include(GoogleTest)
-gtest_discover_tests(sail_tests)
+add_test(NAME sail_tests COMMAND sail_tests)
 
 install(TARGETS sail DESTINATION bin)

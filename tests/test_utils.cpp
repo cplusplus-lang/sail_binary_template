@@ -1,17 +1,16 @@
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
+#include <catch2/catch_test_macros.hpp>
 #include "utils.h"
 #include <filesystem>
 #include <fstream>
 
-class UtilsTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+class UtilsTestFixture {
+public:
+    UtilsTestFixture() {
         testDir = std::filesystem::temp_directory_path() / "sail_test";
         std::filesystem::create_directories(testDir);
     }
-
-    void TearDown() override {
+    
+    ~UtilsTestFixture() {
         if (std::filesystem::exists(testDir)) {
             std::filesystem::remove_all(testDir);
         }
@@ -20,120 +19,130 @@ protected:
     std::filesystem::path testDir;
 };
 
-TEST_F(UtilsTest, GetHomeDirectoryReturnsNonEmptyString) {
+TEST_CASE("Utils::getHomeDirectory returns non-empty string", "[utils]") {
     std::string homeDir = sail::Utils::getHomeDirectory();
-    EXPECT_FALSE(homeDir.empty());
-    EXPECT_TRUE(std::filesystem::exists(homeDir));
+    REQUIRE_FALSE(homeDir.empty());
+    REQUIRE(std::filesystem::exists(homeDir));
 }
 
-TEST_F(UtilsTest, GetSailDirectoryReturnsCorrectPath) {
+TEST_CASE("Utils::getSailDirectory returns correct path", "[utils]") {
     std::string sailDir = sail::Utils::getSailDirectory();
-    EXPECT_FALSE(sailDir.empty());
+    REQUIRE_FALSE(sailDir.empty());
     
     std::string homeDir = sail::Utils::getHomeDirectory();
-    EXPECT_TRUE(sailDir.find(homeDir) == 0); // sailDir should start with homeDir
+    REQUIRE(sailDir.find(homeDir) == 0); // sailDir should start with homeDir
     
 #ifdef SAIL_PLATFORM_WINDOWS
-    EXPECT_TRUE(sailDir.find("\\.sail") != std::string::npos);
+    REQUIRE(sailDir.find("\\.sail") != std::string::npos);
 #else
-    EXPECT_TRUE(sailDir.find("/.sail") != std::string::npos);
+    REQUIRE(sailDir.find("/.sail") != std::string::npos);
 #endif
 }
 
-TEST_F(UtilsTest, GetSailBinDirectoryReturnsCorrectPath) {
+TEST_CASE("Utils::getSailBinDirectory returns correct path", "[utils]") {
     std::string binDir = sail::Utils::getSailBinDirectory();
-    EXPECT_FALSE(binDir.empty());
+    REQUIRE_FALSE(binDir.empty());
     
     std::string sailDir = sail::Utils::getSailDirectory();
-    EXPECT_TRUE(binDir.find(sailDir) == 0); // binDir should start with sailDir
+    REQUIRE(binDir.find(sailDir) == 0); // binDir should start with sailDir
     
 #ifdef SAIL_PLATFORM_WINDOWS
-    EXPECT_TRUE(binDir.find("\\bin") != std::string::npos);
+    REQUIRE(binDir.find("\\bin") != std::string::npos);
 #else
-    EXPECT_TRUE(binDir.find("/bin") != std::string::npos);
+    REQUIRE(binDir.find("/bin") != std::string::npos);
 #endif
 }
 
-TEST_F(UtilsTest, CreateDirectoryRecursiveCreatesDirectory) {
-    auto subDir = testDir / "level1" / "level2" / "level3";
+TEST_CASE("Utils::createDirectoryRecursive creates directory", "[utils]") {
+    UtilsTestFixture fixture;
+    auto subDir = fixture.testDir / "level1" / "level2" / "level3";
     std::string subDirStr = subDir.string();
     
-    EXPECT_FALSE(std::filesystem::exists(subDir));
-    EXPECT_TRUE(sail::Utils::createDirectoryRecursive(subDirStr));
-    EXPECT_TRUE(std::filesystem::exists(subDir));
-    EXPECT_TRUE(std::filesystem::is_directory(subDir));
+    REQUIRE_FALSE(std::filesystem::exists(subDir));
+    REQUIRE(sail::Utils::createDirectoryRecursive(subDirStr));
+    REQUIRE(std::filesystem::exists(subDir));
+    REQUIRE(std::filesystem::is_directory(subDir));
 }
 
-TEST_F(UtilsTest, CreateDirectoryRecursiveHandlesExistingDirectory) {
-    std::string testDirStr = testDir.string();
-    EXPECT_TRUE(sail::Utils::createDirectoryRecursive(testDirStr)); // Should not fail on existing dir
+TEST_CASE("Utils::createDirectoryRecursive handles existing directory", "[utils]") {
+    UtilsTestFixture fixture;
+    std::string testDirStr = fixture.testDir.string();
+    REQUIRE(sail::Utils::createDirectoryRecursive(testDirStr)); // Should not fail on existing dir
 }
 
-TEST_F(UtilsTest, FileExistsReturnsTrueForExistingFile) {
-    auto testFile = testDir / "test_file.txt";
+TEST_CASE("Utils::fileExists returns true for existing file", "[utils]") {
+    UtilsTestFixture fixture;
+    auto testFile = fixture.testDir / "test_file.txt";
     std::ofstream file(testFile);
     file << "test content";
     file.close();
     
-    EXPECT_TRUE(sail::Utils::fileExists(testFile.string()));
+    REQUIRE(sail::Utils::fileExists(testFile.string()));
 }
 
-TEST_F(UtilsTest, FileExistsReturnsFalseForNonExistingFile) {
-    auto testFile = testDir / "non_existing_file.txt";
-    EXPECT_FALSE(sail::Utils::fileExists(testFile.string()));
+TEST_CASE("Utils::fileExists returns false for non-existing file", "[utils]") {
+    UtilsTestFixture fixture;
+    auto testFile = fixture.testDir / "non_existing_file.txt";
+    REQUIRE_FALSE(sail::Utils::fileExists(testFile.string()));
 }
 
-TEST_F(UtilsTest, FileExistsReturnsFalseForDirectory) {
-    EXPECT_FALSE(sail::Utils::fileExists(testDir.string()));
+TEST_CASE("Utils::fileExists returns false for directory", "[utils]") {
+    UtilsTestFixture fixture;
+    REQUIRE_FALSE(sail::Utils::fileExists(fixture.testDir.string()));
 }
 
-TEST_F(UtilsTest, DirectoryExistsReturnsTrueForExistingDirectory) {
-    EXPECT_TRUE(sail::Utils::directoryExists(testDir.string()));
+TEST_CASE("Utils::directoryExists returns true for existing directory", "[utils]") {
+    UtilsTestFixture fixture;
+    REQUIRE(sail::Utils::directoryExists(fixture.testDir.string()));
 }
 
-TEST_F(UtilsTest, DirectoryExistsReturnsFalseForNonExistingDirectory) {
-    auto nonExisting = testDir / "non_existing";
-    EXPECT_FALSE(sail::Utils::directoryExists(nonExisting.string()));
+TEST_CASE("Utils::directoryExists returns false for non-existing directory", "[utils]") {
+    UtilsTestFixture fixture;
+    auto nonExisting = fixture.testDir / "non_existing";
+    REQUIRE_FALSE(sail::Utils::directoryExists(nonExisting.string()));
 }
 
-TEST_F(UtilsTest, DirectoryExistsReturnsFalseForFile) {
-    auto testFile = testDir / "test_file.txt";
+TEST_CASE("Utils::directoryExists returns false for file", "[utils]") {
+    UtilsTestFixture fixture;
+    auto testFile = fixture.testDir / "test_file.txt";
     std::ofstream file(testFile);
     file << "test content";
     file.close();
     
-    EXPECT_FALSE(sail::Utils::directoryExists(testFile.string()));
+    REQUIRE_FALSE(sail::Utils::directoryExists(testFile.string()));
 }
 
-TEST_F(UtilsTest, GetTemporaryDirectoryReturnsValidPath) {
+TEST_CASE("Utils::getTemporaryDirectory returns valid path", "[utils]") {
     std::string tempDir = sail::Utils::getTemporaryDirectory();
-    EXPECT_FALSE(tempDir.empty());
-    EXPECT_TRUE(std::filesystem::exists(tempDir));
-    EXPECT_TRUE(std::filesystem::is_directory(tempDir));
+    REQUIRE_FALSE(tempDir.empty());
+    REQUIRE(std::filesystem::exists(tempDir));
+    REQUIRE(std::filesystem::is_directory(tempDir));
 }
 
-TEST_F(UtilsTest, CopyFileSuccessfullyCopiesToDestination) {
-    auto sourceFile = testDir / "source.txt";
-    auto destFile = testDir / "destination.txt";
+TEST_CASE("Utils::copyFile successfully copies to destination", "[utils]") {
+    UtilsTestFixture fixture;
+    auto sourceFile = fixture.testDir / "source.txt";
+    auto destFile = fixture.testDir / "destination.txt";
     
     // Create source file
     std::ofstream source(sourceFile);
     source << "test content for copying";
     source.close();
     
-    EXPECT_TRUE(sail::Utils::copyFile(sourceFile.string(), destFile.string()));
-    EXPECT_TRUE(std::filesystem::exists(destFile));
+    REQUIRE(sail::Utils::copyFile(sourceFile.string(), destFile.string()));
+    REQUIRE(std::filesystem::exists(destFile));
     
     // Verify content
     std::ifstream dest(destFile);
     std::string content((std::istreambuf_iterator<char>(dest)),
                         std::istreambuf_iterator<char>());
-    EXPECT_EQ(content, "test content for copying");
+    REQUIRE(content == "test content for copying");
 }
 
-TEST_F(UtilsTest, CopyFileOverwritesExistingFile) {
-    auto sourceFile = testDir / "source.txt";
-    auto destFile = testDir / "destination.txt";
+TEST_CASE("Utils::copyFile overwrites existing file", "[utils]") {
+    UtilsTestFixture fixture;
+    auto sourceFile = fixture.testDir / "source.txt";
+    auto destFile = fixture.testDir / "destination.txt";
     
     // Create source file
     std::ofstream source(sourceFile);
@@ -145,32 +154,33 @@ TEST_F(UtilsTest, CopyFileOverwritesExistingFile) {
     existing << "old content";
     existing.close();
     
-    EXPECT_TRUE(sail::Utils::copyFile(sourceFile.string(), destFile.string()));
+    REQUIRE(sail::Utils::copyFile(sourceFile.string(), destFile.string()));
     
     // Verify content was overwritten
     std::ifstream dest(destFile);
     std::string content((std::istreambuf_iterator<char>(dest)),
                         std::istreambuf_iterator<char>());
-    EXPECT_EQ(content, "new content");
+    REQUIRE(content == "new content");
 }
 
-TEST_F(UtilsTest, IsExecutableDetectsExecutableFiles) {
+TEST_CASE("Utils::isExecutable detects executable files", "[utils]") {
+    UtilsTestFixture fixture;
 #ifdef SAIL_PLATFORM_WINDOWS
-    auto exeFile = testDir / "test.exe";
+    auto exeFile = fixture.testDir / "test.exe";
     std::ofstream exe(exeFile);
     exe << "fake executable";
     exe.close();
     
-    EXPECT_TRUE(sail::Utils::isExecutable(exeFile.string()));
+    REQUIRE(sail::Utils::isExecutable(exeFile.string()));
     
-    auto nonExeFile = testDir / "test.txt";
+    auto nonExeFile = fixture.testDir / "test.txt";
     std::ofstream txt(nonExeFile);
     txt << "text file";
     txt.close();
     
-    EXPECT_FALSE(sail::Utils::isExecutable(nonExeFile.string()));
+    REQUIRE_FALSE(sail::Utils::isExecutable(nonExeFile.string()));
 #else
-    auto testFile = testDir / "test_executable";
+    auto testFile = fixture.testDir / "test_executable";
     std::ofstream file(testFile);
     file << "#!/bin/bash\necho test";
     file.close();
@@ -179,21 +189,22 @@ TEST_F(UtilsTest, IsExecutableDetectsExecutableFiles) {
     std::filesystem::permissions(testFile, std::filesystem::perms::owner_exec, 
                                 std::filesystem::perm_options::add);
     
-    EXPECT_TRUE(sail::Utils::isExecutable(testFile.string()));
+    REQUIRE(sail::Utils::isExecutable(testFile.string()));
     
     // Test non-executable file
-    auto nonExeFile = testDir / "non_executable";
+    auto nonExeFile = fixture.testDir / "non_executable";
     std::ofstream nonExe(nonExeFile);
     nonExe << "not executable";
     nonExe.close();
     
-    EXPECT_FALSE(sail::Utils::isExecutable(nonExeFile.string()));
+    REQUIRE_FALSE(sail::Utils::isExecutable(nonExeFile.string()));
 #endif
 }
 
-TEST_F(UtilsTest, MakeExecutableWorksOnUnixLikeSystems) {
+TEST_CASE("Utils::makeExecutable works on Unix-like systems", "[utils]") {
+    UtilsTestFixture fixture;
 #ifndef SAIL_PLATFORM_WINDOWS
-    auto testFile = testDir / "make_executable_test";
+    auto testFile = fixture.testDir / "make_executable_test";
     std::ofstream file(testFile);
     file << "#!/bin/bash\necho test";
     file.close();
@@ -202,15 +213,16 @@ TEST_F(UtilsTest, MakeExecutableWorksOnUnixLikeSystems) {
     sail::Utils::makeExecutable(testFile.string());
     
     // After making executable, should be detectable
-    EXPECT_TRUE(sail::Utils::isExecutable(testFile.string()));
+    REQUIRE(sail::Utils::isExecutable(testFile.string()));
 #else
     // On Windows, this test doesn't apply as makeExecutable is a no-op
-    EXPECT_TRUE(true); // Just pass the test
+    REQUIRE(true); // Just pass the test
 #endif
 }
 
-TEST_F(UtilsTest, RemoveDirectoryDeletesDirectoryAndContents) {
-    auto subDir = testDir / "to_remove";
+TEST_CASE("Utils::removeDirectory deletes directory and contents", "[utils]") {
+    UtilsTestFixture fixture;
+    auto subDir = fixture.testDir / "to_remove";
     auto subFile = subDir / "file.txt";
     
     std::filesystem::create_directory(subDir);
@@ -218,11 +230,11 @@ TEST_F(UtilsTest, RemoveDirectoryDeletesDirectoryAndContents) {
     file << "content";
     file.close();
     
-    EXPECT_TRUE(std::filesystem::exists(subDir));
-    EXPECT_TRUE(std::filesystem::exists(subFile));
+    REQUIRE(std::filesystem::exists(subDir));
+    REQUIRE(std::filesystem::exists(subFile));
     
     sail::Utils::removeDirectory(subDir.string());
     
-    EXPECT_FALSE(std::filesystem::exists(subDir));
-    EXPECT_FALSE(std::filesystem::exists(subFile));
+    REQUIRE_FALSE(std::filesystem::exists(subDir));
+    REQUIRE_FALSE(std::filesystem::exists(subFile));
 }

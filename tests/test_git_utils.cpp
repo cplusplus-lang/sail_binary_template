@@ -1,18 +1,17 @@
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
+#include <catch2/catch_test_macros.hpp>
 #include "git_utils.h"
 #include "utils.h"
 #include <filesystem>
 #include <fstream>
 
-class GitUtilsTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+class GitUtilsTestFixture {
+public:
+    GitUtilsTestFixture() {
         testDir = std::filesystem::temp_directory_path() / "sail_git_test";
         std::filesystem::create_directories(testDir);
     }
 
-    void TearDown() override {
+    ~GitUtilsTestFixture() {
         if (std::filesystem::exists(testDir)) {
             std::filesystem::remove_all(testDir);
         }
@@ -21,111 +20,116 @@ protected:
     std::filesystem::path testDir;
 };
 
-TEST_F(GitUtilsTest, ExtractRepoNameFromHttpsUrl) {
+TEST_CASE("GitUtils::extractRepoName from HTTPS URL", "[git_utils]") {
     std::string url = "https://github.com/cplusplus-lang/names";
     std::string expected = "names";
-    EXPECT_EQ(sail::GitUtils::extractRepoName(url), expected);
+    REQUIRE(sail::GitUtils::extractRepoName(url) == expected);
 }
 
-TEST_F(GitUtilsTest, ExtractRepoNameFromHttpsUrlWithGitSuffix) {
+TEST_CASE("GitUtils::extractRepoName from HTTPS URL with .git suffix", "[git_utils]") {
     std::string url = "https://github.com/cplusplus-lang/names.git";
     std::string expected = "names";
-    EXPECT_EQ(sail::GitUtils::extractRepoName(url), expected);
+    REQUIRE(sail::GitUtils::extractRepoName(url) == expected);
 }
 
-TEST_F(GitUtilsTest, ExtractRepoNameFromSshUrl) {
+TEST_CASE("GitUtils::extractRepoName from SSH URL", "[git_utils]") {
     std::string url = "git@github.com:cplusplus-lang/names.git";
     std::string expected = "names";
-    EXPECT_EQ(sail::GitUtils::extractRepoName(url), expected);
+    REQUIRE(sail::GitUtils::extractRepoName(url) == expected);
 }
 
-TEST_F(GitUtilsTest, ExtractRepoNameFromSimpleName) {
+TEST_CASE("GitUtils::extractRepoName from simple name", "[git_utils]") {
     std::string url = "simple-name";
     std::string expected = "simple-name";
-    EXPECT_EQ(sail::GitUtils::extractRepoName(url), expected);
+    REQUIRE(sail::GitUtils::extractRepoName(url) == expected);
 }
 
-TEST_F(GitUtilsTest, ExtractRepoNameFromComplexPath) {
+TEST_CASE("GitUtils::extractRepoName from complex path", "[git_utils]") {
     std::string url = "https://gitlab.com/user/group/subgroup/project-name.git";
     std::string expected = "project-name";
-    EXPECT_EQ(sail::GitUtils::extractRepoName(url), expected);
+    REQUIRE(sail::GitUtils::extractRepoName(url) == expected);
 }
 
-TEST_F(GitUtilsTest, ExtractRepoNameWithSpecialCharacters) {
+TEST_CASE("GitUtils::extractRepoName with special characters", "[git_utils]") {
     std::string url = "https://github.com/user/my-awesome_project.123";
     std::string expected = "my-awesome_project.123";
-    EXPECT_EQ(sail::GitUtils::extractRepoName(url), expected);
+    REQUIRE(sail::GitUtils::extractRepoName(url) == expected);
 }
 
-TEST_F(GitUtilsTest, ExtractRepoNameHandlesEmptyString) {
+TEST_CASE("GitUtils::extractRepoName handles empty string", "[git_utils]") {
     std::string url = "";
     std::string expected = "";
-    EXPECT_EQ(sail::GitUtils::extractRepoName(url), expected);
+    REQUIRE(sail::GitUtils::extractRepoName(url) == expected);
 }
 
-TEST_F(GitUtilsTest, ExtractRepoNameHandlesTrailingSlash) {
+TEST_CASE("GitUtils::extractRepoName handles trailing slash", "[git_utils]") {
     std::string url = "https://github.com/cplusplus-lang/names/";
     std::string expected = "";  // Last part after / is empty
-    EXPECT_EQ(sail::GitUtils::extractRepoName(url), expected);
+    REQUIRE(sail::GitUtils::extractRepoName(url) == expected);
 }
 
-TEST_F(GitUtilsTest, IsGitRepositoryReturnsFalseForNonGitDirectory) {
-    EXPECT_FALSE(sail::GitUtils::isGitRepository(testDir.string()));
+TEST_CASE("GitUtils::isGitRepository returns false for non-git directory", "[git_utils]") {
+    GitUtilsTestFixture fixture;
+    REQUIRE_FALSE(sail::GitUtils::isGitRepository(fixture.testDir.string()));
 }
 
-TEST_F(GitUtilsTest, IsGitRepositoryReturnsFalseForNonExistentDirectory) {
-    auto nonExistent = testDir / "does_not_exist";
-    EXPECT_FALSE(sail::GitUtils::isGitRepository(nonExistent.string()));
+TEST_CASE("GitUtils::isGitRepository returns false for non-existent directory", "[git_utils]") {
+    GitUtilsTestFixture fixture;
+    auto nonExistent = fixture.testDir / "does_not_exist";
+    REQUIRE_FALSE(sail::GitUtils::isGitRepository(nonExistent.string()));
 }
 
-TEST_F(GitUtilsTest, IsGitRepositoryReturnsTrueForGitDirectory) {
+TEST_CASE("GitUtils::isGitRepository returns true for git directory", "[git_utils]") {
+    GitUtilsTestFixture fixture;
     // Create a fake .git directory
-    auto gitDir = testDir / ".git";
+    auto gitDir = fixture.testDir / ".git";
     std::filesystem::create_directory(gitDir);
     
-    EXPECT_TRUE(sail::GitUtils::isGitRepository(testDir.string()));
+    REQUIRE(sail::GitUtils::isGitRepository(fixture.testDir.string()));
 }
 
-// Integration test - only run if git is available and we can access the internet
-TEST_F(GitUtilsTest, ClonePublicRepositoryIntegration) {
+TEST_CASE("GitUtils::clone public repository integration test", "[git_utils][integration]") {
+    GitUtilsTestFixture fixture;
     // Skip this test in environments without git or internet access
     if (std::system("git --version > /dev/null 2>&1") != 0) {
-        GTEST_SKIP() << "Git not available, skipping integration test";
-        return;
+        SKIP("Git not available, skipping integration test");
     }
     
     // Use a small, reliable test repository
     std::string testUrl = "https://github.com/octocat/Hello-World.git";
-    auto cloneDir = testDir / "hello_world_clone";
+    auto cloneDir = fixture.testDir / "hello_world_clone";
     
     bool result = sail::GitUtils::clone(testUrl, cloneDir.string());
     
     // The test result depends on internet connectivity and git availability
     // If successful, verify the directory structure
     if (result) {
-        EXPECT_TRUE(std::filesystem::exists(cloneDir));
-        EXPECT_TRUE(sail::GitUtils::isGitRepository(cloneDir.string()));
-        EXPECT_TRUE(std::filesystem::exists(cloneDir / "README"));
+        REQUIRE(std::filesystem::exists(cloneDir));
+        REQUIRE(sail::GitUtils::isGitRepository(cloneDir.string()));
+        REQUIRE(std::filesystem::exists(cloneDir / "README"));
     } else {
         // If clone failed, it could be due to network issues, which is acceptable
         // We'll just log this but not fail the test
-        std::cout << "Clone integration test failed - likely due to network or git issues" << std::endl;
+        INFO("Clone integration test failed - likely due to network or git issues");
+        REQUIRE(true); // Don't fail the test
     }
 }
 
-TEST_F(GitUtilsTest, CloneInvalidUrlReturnsFalse) {
+TEST_CASE("GitUtils::clone invalid URL returns false", "[git_utils]") {
+    GitUtilsTestFixture fixture;
     std::string invalidUrl = "https://invalid-git-url-that-does-not-exist.com/repo.git";
-    auto cloneDir = testDir / "should_not_exist";
+    auto cloneDir = fixture.testDir / "should_not_exist";
     
     bool result = sail::GitUtils::clone(invalidUrl, cloneDir.string());
     
-    EXPECT_FALSE(result);
-    EXPECT_FALSE(std::filesystem::exists(cloneDir));
+    REQUIRE_FALSE(result);
+    REQUIRE_FALSE(std::filesystem::exists(cloneDir));
 }
 
-TEST_F(GitUtilsTest, CloneToExistingDirectoryHandledGracefully) {
+TEST_CASE("GitUtils::clone to existing directory handled gracefully", "[git_utils]") {
+    GitUtilsTestFixture fixture;
     // Create existing directory
-    auto existingDir = testDir / "existing";
+    auto existingDir = fixture.testDir / "existing";
     std::filesystem::create_directory(existingDir);
     
     // Create a dummy file
@@ -138,7 +142,7 @@ TEST_F(GitUtilsTest, CloneToExistingDirectoryHandledGracefully) {
     bool result = sail::GitUtils::clone(testUrl, existingDir.string());
     
     // Should fail gracefully without crashing
-    EXPECT_FALSE(result);
+    REQUIRE_FALSE(result);
     // Original file should still exist
-    EXPECT_TRUE(std::filesystem::exists(existingDir / "existing_file.txt"));
+    REQUIRE(std::filesystem::exists(existingDir / "existing_file.txt"));
 }

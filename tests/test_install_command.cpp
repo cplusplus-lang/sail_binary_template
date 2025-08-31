@@ -1,13 +1,13 @@
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
+#include <catch2/catch_test_macros.hpp>
 #include "install_command.h"
 #include "utils.h"
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 
-class InstallCommandTest : public ::testing::Test {
-protected:
-    void SetUp() override {
+class InstallCommandTestFixture {
+public:
+    InstallCommandTestFixture() {
         originalSailDir = std::filesystem::temp_directory_path() / "sail_install_test";
         std::filesystem::create_directories(originalSailDir);
         
@@ -16,7 +16,7 @@ protected:
         std::filesystem::create_directories(testSailBinDir);
     }
 
-    void TearDown() override {
+    ~InstallCommandTestFixture() {
         if (std::filesystem::exists(originalSailDir)) {
             std::filesystem::remove_all(originalSailDir);
         }
@@ -91,18 +91,20 @@ private:
     using sail::InstallCommand::installBinaries;
 };
 
-TEST_F(InstallCommandTest, CreateTempDirCreatesUniqueDirectory) {
+TEST_CASE("CreateTempDir creates unique directory", "[InstallCommand]") {
+    InstallCommandTestFixture fixture;
     MockInstallCommand cmd;
     
-    EXPECT_TRUE(cmd.testCreateTempDir());
+    REQUIRE(cmd.testCreateTempDir());
 }
 
-TEST_F(InstallCommandTest, InstallBinariesFindsAndInstallsExecutables) {
+TEST_CASE("InstallBinaries finds and installs executables", "[InstallCommand]") {
+    InstallCommandTestFixture fixture;
     MockInstallCommand cmd;
-    cmd.setTestInstallDir(testSailBinDir.string());
+    cmd.setTestInstallDir(fixture.testSailBinDir.string());
     
     // Create mock build directory with executables
-    auto mockBuildDir = originalSailDir / "mock_build";
+    auto mockBuildDir = fixture.originalSailDir / "mock_build";
     std::filesystem::create_directories(mockBuildDir);
     
     // Create mock executables
@@ -131,26 +133,27 @@ TEST_F(InstallCommandTest, InstallBinariesFindsAndInstallsExecutables) {
                                 std::filesystem::perm_options::add);
 #endif
     
-    bool result = cmd.testInstallBinariesWithMockBuild(mockBuildDir.string(), testSailBinDir.string());
+    bool result = cmd.testInstallBinariesWithMockBuild(mockBuildDir.string(), fixture.testSailBinDir.string());
     
-    EXPECT_TRUE(result);
+    REQUIRE(result);
     
     // Verify binaries were installed
 #ifdef SAIL_PLATFORM_WINDOWS
-    EXPECT_TRUE(std::filesystem::exists(testSailBinDir / "program1.exe"));
-    EXPECT_TRUE(std::filesystem::exists(testSailBinDir / "program2.exe"));
+    REQUIRE(std::filesystem::exists(fixture.testSailBinDir / "program1.exe"));
+    REQUIRE(std::filesystem::exists(fixture.testSailBinDir / "program2.exe"));
 #else
-    EXPECT_TRUE(std::filesystem::exists(testSailBinDir / "program1"));
-    EXPECT_TRUE(std::filesystem::exists(testSailBinDir / "program2"));
+    REQUIRE(std::filesystem::exists(fixture.testSailBinDir / "program1"));
+    REQUIRE(std::filesystem::exists(fixture.testSailBinDir / "program2"));
 #endif
 }
 
-TEST_F(InstallCommandTest, InstallBinariesHandlesNonExecutableFiles) {
+TEST_CASE("InstallBinaries handles non-executable files", "[InstallCommand]") {
+    InstallCommandTestFixture fixture;
     MockInstallCommand cmd;
-    cmd.setTestInstallDir(testSailBinDir.string());
+    cmd.setTestInstallDir(fixture.testSailBinDir.string());
     
     // Create mock build directory with non-executables
-    auto mockBuildDir = originalSailDir / "mock_build_no_exe";
+    auto mockBuildDir = fixture.originalSailDir / "mock_build_no_exe";
     std::filesystem::create_directories(mockBuildDir);
     
     // Create non-executable files
@@ -165,51 +168,54 @@ TEST_F(InstallCommandTest, InstallBinariesHandlesNonExecutableFiles) {
     file2 << "fake object file";
     file2.close();
     
-    bool result = cmd.testInstallBinariesWithMockBuild(mockBuildDir.string(), testSailBinDir.string());
+    bool result = cmd.testInstallBinariesWithMockBuild(mockBuildDir.string(), fixture.testSailBinDir.string());
     
     // Should fail because no executables found
-    EXPECT_FALSE(result);
+    REQUIRE_FALSE(result);
 }
 
-TEST_F(InstallCommandTest, InstallBinariesHandlesEmptyBuildDirectory) {
+TEST_CASE("InstallBinaries handles empty build directory", "[InstallCommand]") {
+    InstallCommandTestFixture fixture;
     MockInstallCommand cmd;
-    cmd.setTestInstallDir(testSailBinDir.string());
+    cmd.setTestInstallDir(fixture.testSailBinDir.string());
     
     // Create empty build directory
-    auto emptyBuildDir = originalSailDir / "empty_build";
+    auto emptyBuildDir = fixture.originalSailDir / "empty_build";
     std::filesystem::create_directories(emptyBuildDir);
     
-    bool result = cmd.testInstallBinariesWithMockBuild(emptyBuildDir.string(), testSailBinDir.string());
+    bool result = cmd.testInstallBinariesWithMockBuild(emptyBuildDir.string(), fixture.testSailBinDir.string());
     
     // Should fail because no executables found
-    EXPECT_FALSE(result);
+    REQUIRE_FALSE(result);
 }
 
-TEST_F(InstallCommandTest, InstallBinariesHandlesNonExistentBuildDirectory) {
+TEST_CASE("InstallBinaries handles non-existent build directory", "[InstallCommand]") {
+    InstallCommandTestFixture fixture;
     MockInstallCommand cmd;
-    cmd.setTestInstallDir(testSailBinDir.string());
+    cmd.setTestInstallDir(fixture.testSailBinDir.string());
     
-    auto nonExistentDir = originalSailDir / "does_not_exist";
+    auto nonExistentDir = fixture.originalSailDir / "does_not_exist";
     
-    bool result = cmd.testInstallBinariesWithMockBuild(nonExistentDir.string(), testSailBinDir.string());
+    bool result = cmd.testInstallBinariesWithMockBuild(nonExistentDir.string(), fixture.testSailBinDir.string());
     
     // Should fail because directory doesn't exist
-    EXPECT_FALSE(result);
+    REQUIRE_FALSE(result);
 }
 
 // Integration test that requires git and cmake
-TEST_F(InstallCommandTest, DISABLED_FullInstallIntegrationTest) {
-    // This test is disabled by default because it requires:
+TEST_CASE("Full install integration test", "[InstallCommand][integration][.integration]") {
+    // This test is skipped by default because it requires:
     // 1. Git to be available
     // 2. CMake to be available  
     // 3. Internet connectivity
     // 4. A known stable repository
     
-    // To enable this test, rename it by removing DISABLED_ prefix
-    // and ensure the above dependencies are met
+    // To enable this test, run with the [integration] tag
+    SKIP("Integration test requires git, cmake, and internet connectivity");
     
+    InstallCommandTestFixture fixture;
     MockInstallCommand cmd;
-    cmd.setTestInstallDir(testSailBinDir.string());
+    cmd.setTestInstallDir(fixture.testSailBinDir.string());
     
     // Use a small, stable repository for testing
     std::string testRepo = "https://github.com/octocat/Hello-World.git";
@@ -221,13 +227,13 @@ TEST_F(InstallCommandTest, DISABLED_FullInstallIntegrationTest) {
     if (result == 0) {
         // Verify that at least something was installed
         bool hasFiles = false;
-        for (const auto& entry : std::filesystem::directory_iterator(testSailBinDir)) {
+        for (const auto& entry : std::filesystem::directory_iterator(fixture.testSailBinDir)) {
             if (entry.is_regular_file()) {
                 hasFiles = true;
                 break;
             }
         }
-        EXPECT_TRUE(hasFiles);
+        REQUIRE(hasFiles);
     } else {
         // If the test failed, it could be due to environmental issues
         // Log the failure but don't fail the test suite
@@ -236,26 +242,28 @@ TEST_F(InstallCommandTest, DISABLED_FullInstallIntegrationTest) {
 }
 
 // Test specific error conditions
-TEST_F(InstallCommandTest, ExecuteHandlesInvalidUrl) {
+TEST_CASE("Execute handles invalid URL", "[InstallCommand]") {
+    InstallCommandTestFixture fixture;
     MockInstallCommand cmd;
-    cmd.setTestInstallDir(testSailBinDir.string());
+    cmd.setTestInstallDir(fixture.testSailBinDir.string());
     
     std::string invalidUrl = "invalid-url-format";
     
     int result = cmd.execute(invalidUrl);
     
     // Should return non-zero exit code for failure
-    EXPECT_NE(result, 0);
+    REQUIRE(result != 0);
 }
 
-TEST_F(InstallCommandTest, ExecuteHandlesUnreachableUrl) {
+TEST_CASE("Execute handles unreachable URL", "[InstallCommand]") {
+    InstallCommandTestFixture fixture;
     MockInstallCommand cmd;
-    cmd.setTestInstallDir(testSailBinDir.string());
+    cmd.setTestInstallDir(fixture.testSailBinDir.string());
     
     std::string unreachableUrl = "https://this-domain-should-not-exist-for-testing.invalid/repo.git";
     
     int result = cmd.execute(unreachableUrl);
     
     // Should return non-zero exit code for failure
-    EXPECT_NE(result, 0);
+    REQUIRE(result != 0);
 }

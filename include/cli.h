@@ -13,6 +13,7 @@ private:
     void printVersion() const;
     int executeInstall(const std::vector<std::string>& args);
     int executeList() const;
+    int executeNew(const std::vector<std::string>& args);
 };
 
 } // namespace sail
