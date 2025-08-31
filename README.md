@@ -6,12 +6,15 @@ Sail is a C++ package manager inspired by Rust's Cargo, designed to simplify the
 
 ## Features
 
-- 🚀 **Easy Installation**: Install C++ packages from Git repositories with a single command
+- 🚀 **Project Creation**: Create new C++ projects with modern structure
+- 🔨 **Build System**: Build projects in debug or release mode with CMake
+- 🏃 **Run Command**: Build and run projects with a single command
+- 📦 **Package Installation**: Install C++ packages from Git repositories
 - 🌍 **Cross-Platform**: Works on Windows, macOS, and Linux
-- 🔧 **CMake Integration**: Automatically builds CMake projects
+- 🔧 **CMake Integration**: Automatically builds CMake projects with forwarding structure
 - 📦 **Binary Management**: Installs executables to `~/.sail/bin`
 - 🛡️ **Robust Error Handling**: Graceful failure recovery and detailed error messages
-- 🧪 **Comprehensive Testing**: 98% test coverage with cross-platform validation
+- 🧪 **Comprehensive Testing**: 96 test cases with cross-platform validation
 
 ## Quick Start
 
@@ -36,6 +39,20 @@ make  # or cmake --build . on Windows
 ### Basic Usage
 
 ```bash
+# Create a new project
+./sail new my_project
+./sail new my_lib --lib
+
+# Build your project  
+./sail build              # Debug build (default)
+./sail build --release    # Release build
+./sail build --verbose    # Verbose output
+
+# Build and run your project
+./sail run                # Build and run
+./sail run --release      # Build and run in release mode
+./sail run -- --help      # Pass arguments to your program
+
 # Install a package by name (from built-in registry)
 ./sail install names
 
@@ -77,6 +94,62 @@ $env:PATH += ";$env:USERPROFILE\.sail\bin"
 ```
 
 ## Usage Examples
+
+### Creating Projects
+
+```bash
+# Create a new binary project
+sail new hello_world
+cd hello_world
+sail run  # Build and run the project
+
+# Create a new library project
+sail new my_library --lib
+cd my_library
+sail build --release  # Build the library
+
+# Projects use a forwarding CMakeLists.txt structure:
+# - Root CMakeLists.txt: Minimal forwarding file
+# - build/cmake/CMakeLists.txt: Actual build configuration
+```
+
+### Building Projects
+
+```bash
+# Build in debug mode (default)
+sail build
+
+# Build in release mode with optimizations
+sail build --release
+
+# Build with verbose output
+sail build --verbose
+
+# Build artifacts are placed in:
+# - build/debug/ (for debug builds)  
+# - build/release/ (for release builds)
+```
+
+### Running Projects
+
+```bash
+# Build and run the project
+sail run
+
+# Build and run in release mode
+sail run --release
+
+# Run with arguments passed to your program
+sail run -- arg1 arg2 --flag
+
+# Run a specific binary
+sail run --bin my_binary_name
+
+# The run command automatically:
+# 1. Builds the project if needed
+# 2. Finds the executable
+# 3. Runs it with provided arguments
+```
 
 ### Installing Packages
 
@@ -167,7 +240,7 @@ make
 
 ### Running Tests
 
-Sail includes comprehensive tests built with Google Test:
+Sail includes comprehensive tests built with Catch2:
 
 ```bash
 # Build and run all tests
@@ -175,10 +248,12 @@ cd build
 ctest --output-on-failure
 
 # Run specific test categories
-ctest -R "UtilsTest"
-ctest -R "GitUtilsTest"
-ctest -R "InstallCommandTest"
-ctest -R "CLITest"
+ctest -R "utils"
+ctest -R "git_utils"
+ctest -R "install_command"
+ctest -R "new_command"
+ctest -R "build_command"
+ctest -R "run_command"
 
 # Run tests verbosely
 ctest --verbose
@@ -186,8 +261,8 @@ ctest --verbose
 
 ### Test Coverage
 
-- **66 total tests** across all components
-- **95%+ pass rate** on supported platforms  
+- **96 total tests** across all components
+- **100% pass rate** on supported platforms  
 - **Cross-platform validation** on Windows, macOS, and Linux
 - **Unit tests** for individual components
 - **Integration tests** for end-to-end functionality
@@ -199,7 +274,10 @@ ctest --verbose
 ### Core Components
 
 - **CLI**: Command-line interface and argument parsing
-- **InstallCommand**: Handles the installation process
+- **NewCommand**: Project creation with modern CMake structure
+- **BuildCommand**: Project building with debug/release modes
+- **RunCommand**: Build-and-run functionality with argument passing
+- **InstallCommand**: Package installation from Git repositories
 - **PackageRegistry**: Built-in registry for common C++ packages
 - **GitUtils**: Git operations (clone, repository detection)
 - **CMakeBuilder**: CMake configuration and building
@@ -213,6 +291,9 @@ sail/
 ├── README.md               # This file
 ├── include/                # Header files
 │   ├── cli.h
+│   ├── new_command.h
+│   ├── build_command.h
+│   ├── run_command.h
 │   ├── install_command.h
 │   ├── package_registry.h
 │   ├── git_utils.h
@@ -221,6 +302,9 @@ sail/
 ├── src/                    # Source files
 │   ├── main.cpp
 │   ├── cli.cpp
+│   ├── new_command.cpp
+│   ├── build_command.cpp
+│   ├── run_command.cpp
 │   ├── install_command.cpp
 │   ├── package_registry.cpp
 │   ├── git_utils.cpp
@@ -228,6 +312,9 @@ sail/
 │   └── utils.cpp
 ├── tests/                  # Test files
 │   ├── test_cli.cpp
+│   ├── test_new_command.cpp
+│   ├── test_build_command.cpp
+│   ├── test_run_command.cpp
 │   ├── test_install_command.cpp
 │   ├── test_package_registry.cpp
 │   ├── test_git_utils.cpp
@@ -323,7 +410,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - ✅ Comprehensive test suite
 - ✅ GitHub Actions CI/CD
 
-### Planned Features
+### v2.0.0 (Current)
+- ✅ Project creation with `sail new`
+- ✅ Build system with `sail build`
+- ✅ Run command with `sail run`
+- ✅ Forwarding CMakeLists.txt structure
+- ✅ 96 comprehensive tests
+- ✅ Catch2 test framework migration
+
+### Planned Features  
 - 🔄 Package versioning support
 - 🔄 Dependency resolution
 - 🔄 Local package registry

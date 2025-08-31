@@ -82,11 +82,14 @@ TEST_CASE("CMakeLists.txt contains correct content", "[new_command]") {
     
     cmd.execute(args);
     
-    // Check CMakeLists.txt content
+    // Check root CMakeLists.txt has forwarding content
     REQUIRE(fixture.fileContains("test_project/CMakeLists.txt", "project(test_project"));
-    REQUIRE(fixture.fileContains("test_project/CMakeLists.txt", "add_executable(test_project"));
-    REQUIRE(fixture.fileContains("test_project/CMakeLists.txt", "src/main.cpp"));
-    REQUIRE(fixture.fileContains("test_project/CMakeLists.txt", "CMAKE_CXX_STANDARD 17"));
+    REQUIRE(fixture.fileContains("test_project/CMakeLists.txt", "include(build/cmake/CMakeLists.txt)"));
+    
+    // Check build/cmake/CMakeLists.txt has actual content
+    REQUIRE(fixture.fileContains("test_project/build/cmake/CMakeLists.txt", "add_executable(test_project"));
+    REQUIRE(fixture.fileContains("test_project/build/cmake/CMakeLists.txt", "src/main.cpp"));
+    REQUIRE(fixture.fileContains("test_project/build/cmake/CMakeLists.txt", "CMAKE_CXX_STANDARD 17"));
 }
 
 TEST_CASE("main.cpp contains hello world", "[new_command]") {
@@ -179,9 +182,13 @@ TEST_CASE("Created library project has correct structure", "[new_command]") {
     int result = cmd.execute(args);
     REQUIRE(result == 0);
     
-    // Check library-specific content
-    REQUIRE(fixture.fileContains("mylib/CMakeLists.txt", "add_library(mylib"));
-    REQUIRE(fixture.fileContains("mylib/CMakeLists.txt", "target_include_directories"));
+    // Check root CMakeLists.txt has forwarding content
+    REQUIRE(fixture.fileContains("mylib/CMakeLists.txt", "project(mylib"));
+    REQUIRE(fixture.fileContains("mylib/CMakeLists.txt", "include(build/cmake/CMakeLists.txt)"));
+    
+    // Check library-specific content in build/cmake/CMakeLists.txt
+    REQUIRE(fixture.fileContains("mylib/build/cmake/CMakeLists.txt", "add_library(mylib"));
+    REQUIRE(fixture.fileContains("mylib/build/cmake/CMakeLists.txt", "target_include_directories"));
     REQUIRE(fixture.fileContains("mylib/include/mylib.h", "namespace mylib"));
     REQUIRE(fixture.fileContains("mylib/src/lib.cpp", "namespace mylib"));
 }

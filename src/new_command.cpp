@@ -128,16 +128,39 @@ bool NewCommand::createProject(const std::string& projectName, const std::string
 }
 
 bool NewCommand::createCMakeListsFile(const std::string& projectPath, const std::string& projectName, bool isBin) {
-    std::string cmakeFile = projectPath + "/CMakeLists.txt";
-    std::ofstream file(cmakeFile);
+    // Create the forwarding CMakeLists.txt in project root
+    std::string rootCmakeFile = projectPath + "/CMakeLists.txt";
+    std::ofstream rootFile(rootCmakeFile);
     
-    if (!file.is_open()) {
+    if (!rootFile.is_open()) {
         std::cerr << "Error: Could not create CMakeLists.txt\n";
         return false;
     }
     
-    file << "cmake_minimum_required(VERSION 3.20)\n";
-    file << "project(" << projectName << " VERSION 1.0.0)\n\n";
+    // Minimal forwarding CMakeLists.txt
+    rootFile << "# Forwarding CMakeLists.txt - DO NOT EDIT\n";
+    rootFile << "# The actual CMake configuration is in build/cmake/CMakeLists.txt\n\n";
+    rootFile << "cmake_minimum_required(VERSION 3.20)\n";
+    rootFile << "project(" << projectName << " VERSION 1.0.0)\n";
+    rootFile << "include(build/cmake/CMakeLists.txt)\n";
+    rootFile.close();
+    
+    // Create build/cmake directory
+    std::string buildCmakeDir = projectPath + "/build/cmake";
+    if (!Utils::createDirectoryRecursive(buildCmakeDir)) {
+        std::cerr << "Error: Could not create build/cmake directory\n";
+        return false;
+    }
+    
+    // Create the actual CMakeLists.txt in build/cmake/
+    std::string actualCmakeFile = buildCmakeDir + "/CMakeLists.txt";
+    std::ofstream file(actualCmakeFile);
+    
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not create build/cmake/CMakeLists.txt\n";
+        return false;
+    }
+    
     file << "set(CMAKE_CXX_STANDARD 17)\n";
     file << "set(CMAKE_CXX_STANDARD_REQUIRED ON)\n\n";
     
