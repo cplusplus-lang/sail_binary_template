@@ -25,6 +25,7 @@ private:
     bool createBuildCMakeListsFile(const std::string& buildCmakeDir, const std::string& projectName, bool isBin) const;
     bool isLibraryProject() const;
     std::string getProjectNameFromToml() const;
+    std::string getCppStandardFromToml() const;
 };
 
 } // namespace sail

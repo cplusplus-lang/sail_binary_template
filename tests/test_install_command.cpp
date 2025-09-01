@@ -219,8 +219,9 @@ TEST_CASE("Full install integration test", "[InstallCommand][integration][.integ
     
     // Use a small, stable repository for testing
     std::string testRepo = "https://github.com/octocat/Hello-World.git";
+    std::vector<std::string> args = {testRepo};
     
-    int result = cmd.execute(testRepo);
+    int result = cmd.execute(args);
     
     // If successful, there should be some installed binaries
     // The exact assertion depends on what the Hello-World repo actually builds
@@ -248,8 +249,9 @@ TEST_CASE("Execute handles invalid URL", "[InstallCommand]") {
     cmd.setTestInstallDir(fixture.testSailBinDir.string());
     
     std::string invalidUrl = "invalid-url-format";
+    std::vector<std::string> args = {invalidUrl};
     
-    int result = cmd.execute(invalidUrl);
+    int result = cmd.execute(args);
     
     // Should return non-zero exit code for failure
     REQUIRE(result != 0);
@@ -261,9 +263,61 @@ TEST_CASE("Execute handles unreachable URL", "[InstallCommand]") {
     cmd.setTestInstallDir(fixture.testSailBinDir.string());
     
     std::string unreachableUrl = "https://this-domain-should-not-exist-for-testing.invalid/repo.git";
+    std::vector<std::string> args = {unreachableUrl};
     
-    int result = cmd.execute(unreachableUrl);
+    int result = cmd.execute(args);
     
     // Should return non-zero exit code for failure
+    REQUIRE(result != 0);
+}
+
+TEST_CASE("Execute handles --full-clone option", "[InstallCommand]") {
+    InstallCommandTestFixture fixture;
+    MockInstallCommand cmd;
+    cmd.setTestInstallDir(fixture.testSailBinDir.string());
+    
+    std::vector<std::string> args = {"--full-clone", "https://github.com/test/repo.git"};
+    
+    // This should parse correctly even if it fails due to network
+    // We're mainly testing argument parsing here
+    int result = cmd.execute(args);
+    
+    // Should return non-zero because repo doesn't exist, but shouldn't crash
+    REQUIRE(result != 0);
+}
+
+TEST_CASE("Execute handles --help option", "[InstallCommand]") {
+    InstallCommandTestFixture fixture;
+    MockInstallCommand cmd;
+    
+    std::vector<std::string> args = {"--help"};
+    
+    int result = cmd.execute(args);
+    
+    // Help should return success
+    REQUIRE(result == 0);
+}
+
+TEST_CASE("Execute handles invalid option", "[InstallCommand]") {
+    InstallCommandTestFixture fixture;
+    MockInstallCommand cmd;
+    
+    std::vector<std::string> args = {"--invalid-option", "some-package"};
+    
+    int result = cmd.execute(args);
+    
+    // Should return error for invalid option
+    REQUIRE(result != 0);
+}
+
+TEST_CASE("Execute handles empty arguments", "[InstallCommand]") {
+    InstallCommandTestFixture fixture;
+    MockInstallCommand cmd;
+    
+    std::vector<std::string> args = {};
+    
+    int result = cmd.execute(args);
+    
+    // Should return error for no arguments
     REQUIRE(result != 0);
 }

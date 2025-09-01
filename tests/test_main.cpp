@@ -149,7 +149,7 @@ TEST_CASE("Install command without arguments shows error", "[CLI]") {
     
     std::string error_output = fixture.captured_cerr.str();
     REQUIRE(error_output.find("install command requires a package name or URL") != std::string::npos);
-    REQUIRE(error_output.find("Usage: sail install <package-name|git-url>") != std::string::npos);
+    REQUIRE(error_output.find("Usage: sail install [OPTIONS] <package-name|git-url>") != std::string::npos);
 }
 
 TEST_CASE("Install command with invalid url fails", "[CLI]") {

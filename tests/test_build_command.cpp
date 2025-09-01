@@ -19,7 +19,7 @@ public:
         
         // Create a minimal CMakeLists.txt for testing
         std::ofstream cmakeFile("CMakeLists.txt");
-        cmakeFile << "cmake_minimum_required(VERSION 3.20)\n";
+        cmakeFile << "cmake_minimum_required(VERSION 3.21)\n";
         cmakeFile << "project(test_project)\n";
         cmakeFile << "add_executable(test_app main.cpp)\n";
         cmakeFile.close();
@@ -234,7 +234,8 @@ TEST_CASE("BuildCommand generates CMake structure for binary project", "[build_c
     
     // Check build CMakeLists.txt content for binary
     REQUIRE(fixture.fileContains("build/cmake/CMakeLists.txt", "add_executable(${SAIL_PROJECT_NAME}"));
-    REQUIRE(fixture.fileContains("build/cmake/CMakeLists.txt", "src/main.cpp"));
+    REQUIRE(fixture.fileContains("build/cmake/CMakeLists.txt", "file(GLOB_RECURSE PROJECT_SOURCES \"src/*.cpp\")"));
+    REQUIRE(fixture.fileContains("build/cmake/CMakeLists.txt", "add_executable(${SAIL_PROJECT_NAME} ${PROJECT_SOURCES}"));
 }
 
 TEST_CASE("BuildCommand generates CMake structure for library project", "[build_command][cmake_generation]") {
@@ -261,7 +262,8 @@ TEST_CASE("BuildCommand generates CMake structure for library project", "[build_
     
     // Check build CMakeLists.txt content for library
     REQUIRE(fixture.fileContains("build/cmake/CMakeLists.txt", "add_library(${SAIL_PROJECT_NAME}"));
-    REQUIRE(fixture.fileContains("build/cmake/CMakeLists.txt", "src/lib.cpp"));
+    REQUIRE(fixture.fileContains("build/cmake/CMakeLists.txt", "file(GLOB_RECURSE PROJECT_SOURCES \"src/*.cpp\")"));
+    REQUIRE(fixture.fileContains("build/cmake/CMakeLists.txt", "add_library(${SAIL_PROJECT_NAME} ${PROJECT_SOURCES}"));
     REQUIRE(fixture.fileContains("build/cmake/CMakeLists.txt", "target_include_directories"));
 }
 
@@ -381,4 +383,68 @@ TEST_CASE("BuildCommand::execute handles deep nested subfolder", "[build_command
     
     // Change back to project root for cleanup
     std::filesystem::current_path("../../../..");
+}
+
+TEST_CASE("BuildCommand validates C++ standard from Sail.toml", "[build_command][cpp_standard]") {
+    SailProjectTestFixture fixture;
+    sail::BuildCommand buildCmd;
+    
+    // Create Sail.toml with valid C++ standard
+    std::ofstream tomlFile("Sail.toml");
+    tomlFile << "[package]\n";
+    tomlFile << "name = \"test_project\"\n";
+    tomlFile << "version = \"1.0.0\"\n";
+    tomlFile << "standard = \"20\"\n\n";
+    tomlFile << "[dependencies]\n";
+    tomlFile.close();
+    
+    std::vector<std::string> args;
+    int result = buildCmd.execute(args);
+    
+    REQUIRE(result == 0);
+    REQUIRE(std::filesystem::exists("build/cmake/CMakeLists.txt"));
+    
+    // Check that generated CMakeLists.txt uses the correct standard
+    REQUIRE(fixture.fileContains("build/cmake/CMakeLists.txt", "set(CMAKE_CXX_STANDARD ${SAIL_CPP_STANDARD})"));
+}
+
+TEST_CASE("BuildCommand rejects invalid C++ standard from Sail.toml", "[build_command][cpp_standard]") {
+    SailProjectTestFixture fixture;
+    sail::BuildCommand buildCmd;
+    
+    // Create Sail.toml with invalid C++ standard
+    std::ofstream tomlFile("Sail.toml");
+    tomlFile << "[package]\n";
+    tomlFile << "name = \"test_project\"\n";
+    tomlFile << "version = \"1.0.0\"\n";
+    tomlFile << "standard = \"99\"\n\n";
+    tomlFile << "[dependencies]\n";
+    tomlFile.close();
+    
+    std::vector<std::string> args;
+    int result = buildCmd.execute(args);
+    
+    // Should fail with invalid standard
+    REQUIRE(result != 0);
+}
+
+TEST_CASE("BuildCommand uses default C++ standard when none specified", "[build_command][cpp_standard]") {
+    SailProjectTestFixture fixture;
+    sail::BuildCommand buildCmd;
+    
+    // Create Sail.toml without standard field
+    std::ofstream tomlFile("Sail.toml");
+    tomlFile << "[package]\n";
+    tomlFile << "name = \"test_project\"\n";
+    tomlFile << "version = \"1.0.0\"\n\n";
+    tomlFile << "[dependencies]\n";
+    tomlFile.close();
+    
+    std::vector<std::string> args;
+    int result = buildCmd.execute(args);
+    
+    REQUIRE(result == 0);
+    
+    // Should use default standard (17) - check for the warning path since no standard was specified
+    REQUIRE(fixture.fileContains("build/cmake/SailToml.cmake", "set(SAIL_CPP_STANDARD \"17\" PARENT_SCOPE)"));
 }

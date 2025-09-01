@@ -20,7 +20,7 @@ Sail is a C++ package manager inspired by Rust's Cargo, designed to simplify the
 
 ### Prerequisites
 
-- **CMake** (3.20 or higher)
+- **CMake** (3.21 or higher)
 - **Git**
 - **C++17 compatible compiler** (GCC, Clang, or MSVC)
 

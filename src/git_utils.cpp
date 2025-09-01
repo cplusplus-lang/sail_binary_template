@@ -6,7 +6,11 @@
 
 namespace sail {
 
-bool GitUtils::clone(const std::string& url, const std::string& targetDir) {
+bool GitUtils::clone(const std::string& url, const std::string& targetDir, bool shallow) {
+    if (shallow) {
+        return shallowClone(url, targetDir);
+    }
+    
     std::string command = "git clone \"" + url + "\" \"" + targetDir + "\"";
     
     std::cout << "Cloning " << url << "..." << std::endl;
@@ -17,6 +21,23 @@ bool GitUtils::clone(const std::string& url, const std::string& targetDir) {
         return true;
     } else {
         std::cerr << "Failed to clone repository" << std::endl;
+        return false;
+    }
+}
+
+bool GitUtils::shallowClone(const std::string& url, const std::string& targetDir) {
+    // Use --depth 1 for shallow clone (like Cargo does for source-only fetching)
+    // This downloads only the latest commit without history
+    std::string command = "git clone --depth 1 \"" + url + "\" \"" + targetDir + "\"";
+    
+    std::cout << "Fetching source from " << url << " (shallow clone)..." << std::endl;
+    int result = std::system(command.c_str());
+    
+    if (result == 0) {
+        std::cout << "Successfully fetched source code" << std::endl;
+        return true;
+    } else {
+        std::cerr << "Failed to fetch source code" << std::endl;
         return false;
     }
 }

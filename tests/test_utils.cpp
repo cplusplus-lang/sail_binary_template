@@ -286,7 +286,7 @@ TEST_CASE("Utils::findProjectRoot finds CMakeLists.txt project", "[utils][projec
         
         // Create CMakeLists.txt in project root
         std::ofstream cmakeFile(projectDir / "CMakeLists.txt");
-        cmakeFile << "cmake_minimum_required(VERSION 3.20)\nproject(test)\n";
+        cmakeFile << "cmake_minimum_required(VERSION 3.21)\nproject(test)\n";
         cmakeFile.close();
         
         // Change to subdirectory
@@ -321,7 +321,7 @@ TEST_CASE("Utils::findProjectRoot prefers Sail.toml over CMakeLists.txt", "[util
         
         // Create CMakeLists.txt in outer directory
         std::ofstream cmakeFile(outerDir / "CMakeLists.txt");
-        cmakeFile << "cmake_minimum_required(VERSION 3.20)\nproject(outer)\n";
+        cmakeFile << "cmake_minimum_required(VERSION 3.21)\nproject(outer)\n";
         cmakeFile.close();
         
         // Create Sail.toml in inner directory
@@ -372,4 +372,25 @@ TEST_CASE("Utils::findProjectRoot returns current path when no project found", "
     if (std::filesystem::exists(originalDir)) {
         std::filesystem::current_path(originalDir);
     }
+}
+
+TEST_CASE("Utils::isValidCppStandard validates correct standards", "[utils]") {
+    REQUIRE(sail::Utils::isValidCppStandard("98"));
+    REQUIRE(sail::Utils::isValidCppStandard("03"));
+    REQUIRE(sail::Utils::isValidCppStandard("11"));
+    REQUIRE(sail::Utils::isValidCppStandard("14"));
+    REQUIRE(sail::Utils::isValidCppStandard("17"));
+    REQUIRE(sail::Utils::isValidCppStandard("20"));
+    REQUIRE(sail::Utils::isValidCppStandard("23"));
+    REQUIRE(sail::Utils::isValidCppStandard("26"));
+}
+
+TEST_CASE("Utils::isValidCppStandard rejects invalid standards", "[utils]") {
+    REQUIRE_FALSE(sail::Utils::isValidCppStandard(""));
+    REQUIRE_FALSE(sail::Utils::isValidCppStandard("99"));
+    REQUIRE_FALSE(sail::Utils::isValidCppStandard("15"));
+    REQUIRE_FALSE(sail::Utils::isValidCppStandard("21"));
+    REQUIRE_FALSE(sail::Utils::isValidCppStandard("invalid"));
+    REQUIRE_FALSE(sail::Utils::isValidCppStandard("c++17"));
+    REQUIRE_FALSE(sail::Utils::isValidCppStandard("C++17"));
 }

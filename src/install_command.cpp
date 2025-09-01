@@ -10,7 +10,54 @@
 
 namespace sail {
 
-int InstallCommand::execute(const std::string& packageInput) {
+int InstallCommand::execute(const std::vector<std::string>& args) {
+    if (args.empty()) {
+        std::cerr << "Error: install command requires a package name or URL\n";
+        std::cerr << "Usage: sail install [OPTIONS] <package-name|git-url>\n";
+        std::cerr << "       sail list                    # Show available packages\n";
+        std::cerr << "Options:\n";
+        std::cerr << "    --full-clone    Download complete repository with git history\n";
+        return 1;
+    }
+    
+    // Parse command line arguments
+    bool fullClone = false;
+    std::string packageInput;
+    
+    for (const auto& arg : args) {
+        if (arg == "--full-clone") {
+            fullClone = true;
+        } else if (arg == "--help" || arg == "-h") {
+            std::cout << "Install a package from a Git repository or package name\n\n";
+            std::cout << "Usage: sail install [OPTIONS] <package-name|git-url>\n\n";
+            std::cout << "Arguments:\n";
+            std::cout << "    <package-name|git-url>    Package name from registry or Git URL\n\n";
+            std::cout << "Options:\n";
+            std::cout << "    --full-clone              Download complete repository with git history\n";
+            std::cout << "    -h, --help                Print help information\n\n";
+            std::cout << "Examples:\n";
+            std::cout << "    sail install names                                      # Install from registry\n";
+            std::cout << "    sail install https://github.com/user/repo.git          # Install from URL (shallow)\n";
+            std::cout << "    sail install --full-clone https://github.com/user/repo.git  # Install with full history\n";
+            return 0;
+        } else if (arg.substr(0, 2) == "--") {
+            std::cerr << "Error: Unknown option '" << arg << "'\n";
+            return 1;
+        } else if (packageInput.empty()) {
+            packageInput = arg;
+        } else {
+            std::cerr << "Error: Multiple package arguments specified\n";
+            return 1;
+        }
+    }
+    
+    if (packageInput.empty()) {
+        std::cerr << "Error: No package name or URL specified\n";
+        return 1;
+    }
+    
+    // Store the clone preference for use in cloneRepository
+    m_fullClone = fullClone;
     PackageRegistry registry;
     std::string packageUrl = packageInput;
     std::string packageName;
@@ -128,8 +175,19 @@ std::string InstallCommand::createTempDir() const {
     return tempDir;
 }
 
-bool InstallCommand::cloneRepository(const std::string& url, const std::string& targetDir) {
-    return GitUtils::clone(url, targetDir);
+bool InstallCommand::cloneRepository(const std::string& url, const std::string& targetDir, bool shallow) {
+    // Override shallow parameter with member variable preference
+    // By default use shallow clone (like Cargo) unless --full-clone is specified
+    bool useShallow = shallow && !m_fullClone;
+    
+    if (useShallow) {
+        std::cout << "Note: Using shallow clone for faster download (source code only)" << std::endl;
+        std::cout << "      Use --full-clone to download complete git history if needed" << std::endl;
+    } else if (m_fullClone) {
+        std::cout << "Note: Using full clone (complete git history)" << std::endl;
+    }
+    
+    return GitUtils::clone(url, targetDir, useShallow);  // GitUtils: true = shallow, false = full
 }
 
 bool InstallCommand::buildProject(const std::string& sourceDir, const std::string& buildDir) {

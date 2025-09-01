@@ -17,7 +17,7 @@ public:
         
         // Create a minimal CMakeLists.txt for testing
         std::ofstream cmakeFile("CMakeLists.txt");
-        cmakeFile << "cmake_minimum_required(VERSION 3.20)\n";
+        cmakeFile << "cmake_minimum_required(VERSION 3.21)\n";
         cmakeFile << "project(test_project)\n";
         cmakeFile << "add_executable(test_project main.cpp)\n";
         cmakeFile.close();
@@ -142,7 +142,7 @@ TEST_CASE("RunCommand::execute with no project name in CMakeLists.txt", "[run_co
     
     // Create CMakeLists.txt without project name
     std::ofstream cmakeFile("CMakeLists.txt");
-    cmakeFile << "cmake_minimum_required(VERSION 3.20)\n";
+    cmakeFile << "cmake_minimum_required(VERSION 3.21)\n";
     cmakeFile << "# No project() call\n";
     cmakeFile.close();
     

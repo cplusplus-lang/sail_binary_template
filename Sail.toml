@@ -1,0 +1,9 @@
+[package]
+name = "sail"
+version = "1.0.0"
+standard = "23"
+
+[dependencies]
+
+[system.commands]
+git = "*"

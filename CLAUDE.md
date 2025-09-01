@@ -31,7 +31,7 @@ This file contains configuration and instructions for Claude Code when working o
 ### Dependencies
 - Catch2 v3.10.0 (for testing)
 - Git (required system dependency)
-- CMake 3.20+ required
+- CMake 3.21+ required
 
 ### Key Features
 - Package manager functionality

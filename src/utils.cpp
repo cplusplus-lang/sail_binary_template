@@ -2,6 +2,8 @@
 #include <iostream>
 #include <filesystem>
 #include <cstdlib>
+#include <vector>
+#include <algorithm>
 
 #ifdef SAIL_PLATFORM_WINDOWS
 #include <windows.h>
@@ -148,6 +150,15 @@ std::string Utils::findProjectRoot(const std::string& startPath) {
     
     // If no project root found, return the original starting path
     return std::filesystem::absolute(startPath).string();
+}
+
+bool Utils::isValidCppStandard(const std::string& standard) {
+    // List of valid C++ standards supported by CMake
+    static const std::vector<std::string> validStandards = {
+        "98", "03", "11", "14", "17", "20", "23", "26"
+    };
+    
+    return std::find(validStandards.begin(), validStandards.end(), standard) != validStandards.end();
 }
 
 } // namespace sail

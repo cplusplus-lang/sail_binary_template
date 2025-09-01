@@ -1,6 +1,8 @@
 #include "cli.h"
 #include "install_command.h"
 #include "new_command.h"
+#include "init_command.h"
+#include "clean_command.h"
 #include "build_command.h"
 #include "run_command.h"
 #include "package_registry.h"
@@ -47,6 +49,22 @@ int CLI::run(int argc, char* argv[]) {
         return executeNew(args);
     }
     
+    if (command == "init") {
+        std::vector<std::string> args;
+        for (int i = 2; i < argc; ++i) {
+            args.push_back(argv[i]);
+        }
+        return executeInit(args);
+    }
+    
+    if (command == "clean") {
+        std::vector<std::string> args;
+        for (int i = 2; i < argc; ++i) {
+            args.push_back(argv[i]);
+        }
+        return executeClean(args);
+    }
+    
     if (command == "build") {
         std::vector<std::string> args;
         for (int i = 2; i < argc; ++i) {
@@ -78,9 +96,11 @@ void CLI::printHelp() const {
     std::cout << "SUBCOMMANDS:\n";
     std::cout << "    build            Build the current project\n";
     std::cout << "    run              Build and run the current project\n";
+    std::cout << "    clean            Remove generated build artifacts\n";
     std::cout << "    install          Install a package from a Git repository or package name\n";
     std::cout << "    list             List available packages in the registry\n";
-    std::cout << "    new              Create a new Sail project\n\n";
+    std::cout << "    new              Create a new Sail project\n";
+    std::cout << "    init             Create a new Sail project in the current directory\n\n";
     std::cout << "EXAMPLES:\n";
     std::cout << "    sail build                                          # Build in debug mode\n";
     std::cout << "    sail build --release                                # Build in release mode\n";
@@ -91,6 +111,10 @@ void CLI::printHelp() const {
     std::cout << "    sail list                                           # Show available packages\n";
     std::cout << "    sail new hello_world                                # Create a new binary project\n";
     std::cout << "    sail new --lib my_library                           # Create a new library project\n";
+    std::cout << "    sail init                                           # Initialize binary project in current directory\n";
+    std::cout << "    sail init --lib                                     # Initialize library project in current directory\n";
+    std::cout << "    sail clean                                          # Remove all build artifacts\n";
+    std::cout << "    sail clean --release                               # Remove only release artifacts\n";
 }
 
 void CLI::printVersion() const {
@@ -98,15 +122,8 @@ void CLI::printVersion() const {
 }
 
 int CLI::executeInstall(const std::vector<std::string>& args) {
-    if (args.empty()) {
-        std::cerr << "Error: install command requires a package name or URL\n";
-        std::cerr << "Usage: sail install <package-name|git-url>\n";
-        std::cerr << "       sail list                    # Show available packages\n";
-        return 1;
-    }
-    
     InstallCommand installCmd;
-    return installCmd.execute(args[0]);
+    return installCmd.execute(args);
 }
 
 int CLI::executeList() const {
@@ -149,6 +166,16 @@ int CLI::executeList() const {
 int CLI::executeNew(const std::vector<std::string>& args) {
     NewCommand newCmd;
     return newCmd.execute(args);
+}
+
+int CLI::executeInit(const std::vector<std::string>& args) {
+    InitCommand initCmd;
+    return initCmd.execute(args);
+}
+
+int CLI::executeClean(const std::vector<std::string>& args) {
+    CleanCommand cleanCmd;
+    return cleanCmd.execute(args);
 }
 
 int CLI::executeBuild(const std::vector<std::string>& args) {

@@ -200,7 +200,7 @@ bool NewCommand::createSailTomlFile(const std::string& projectPath, const std::s
     file << "[package]\n";
     file << "name = \"" << projectName << "\"\n";
     file << "version = \"1.0.0\"\n";
-    file << "description = \"A new Sail project\"\n\n";
+    file << "standard = \"17\"\n\n";
     file << "[dependencies]\n";
     
     file.close();

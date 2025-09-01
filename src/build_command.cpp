@@ -35,6 +35,16 @@ int BuildCommand::execute(const std::vector<std::string>& args) {
     
     std::string buildDir = getBuildDir(release);
     
+    // Validate C++ standard if Sail.toml exists
+    if (std::filesystem::exists("Sail.toml")) {
+        std::string cppStandard = getCppStandardFromToml();
+        if (!Utils::isValidCppStandard(cppStandard)) {
+            std::cerr << "Error: Invalid C++ standard '" << cppStandard << "' in Sail.toml\n";
+            std::cerr << "Valid options are: 98, 03, 11, 14, 17, 20, 23, 26\n";
+            return 1;
+        }
+    }
+    
     // Ensure CMake structure exists before building
     if (!ensureCMakeStructure()) {
         std::cerr << "Error: Failed to set up CMake project structure\n";
@@ -195,7 +205,7 @@ bool BuildCommand::createRootCMakeListsFile() const {
     
     file << "# Forwarding CMakeLists.txt - DO NOT EDIT\n";
     file << "# The actual CMake configuration is in build/cmake/CMakeLists.txt\n\n";
-    file << "cmake_minimum_required(VERSION 3.20)\n\n";
+    file << "cmake_minimum_required(VERSION 3.21)\n\n";
     file << "# Parse Sail.toml for project name and version\n";
     file << "include(build/cmake/SailToml.cmake)\n";
     file << "sail_parse_toml()\n\n";
@@ -262,10 +272,18 @@ bool BuildCommand::createSailTomlModule(const std::string& buildCmakeDir) const 
     file << "    else()\n";
     file << "        set(SAIL_PROJECT_VERSION \"${CMAKE_MATCH_1}\" PARENT_SCOPE)\n";
     file << "    endif()\n\n";
-    file << "    # Optional: Parse project description (look under [package] section)\n";
-    file << "    string(REGEX MATCH \"\\\\[package\\\\][^\\\\[]*description = \\\"([^\\\"]+)\\\"\" _ \"${SAIL_TOML_CONTENT}\")\n";
-    file << "    if(CMAKE_MATCH_1)\n";
-    file << "        set(SAIL_PROJECT_DESCRIPTION \"${CMAKE_MATCH_1}\" PARENT_SCOPE)\n";
+    file << "    # Parse C++ standard (look under [package] section)\n";
+    file << "    string(REGEX MATCH \"\\\\[package\\\\][^\\\\[]*standard = \\\"([^\\\"]+)\\\"\" _ \"${SAIL_TOML_CONTENT}\")\n";
+    file << "    if(NOT CMAKE_MATCH_1)\n";
+    file << "        message(WARNING \"Could not parse C++ standard from Sail.toml, using 17\")\n";
+    file << "        set(SAIL_CPP_STANDARD \"17\" PARENT_SCOPE)\n";
+    file << "    else()\n";
+    file << "        set(SAIL_CPP_STANDARD \"${CMAKE_MATCH_1}\" PARENT_SCOPE)\n";
+    file << "        # Validate the C++ standard\n";
+    file << "        set(VALID_STANDARDS 98 03 11 14 17 20 23 26)\n";
+    file << "        if(NOT \"${CMAKE_MATCH_1}\" IN_LIST VALID_STANDARDS)\n";
+    file << "            message(FATAL_ERROR \"Invalid C++ standard '${CMAKE_MATCH_1}'. Valid options are: ${VALID_STANDARDS}\")\n";
+    file << "        endif()\n";
     file << "    endif()\n\n";
     file << "    # Debug output (optional)\n";
     file << "    message(STATUS \"Sail project: ${SAIL_PROJECT_NAME} v${SAIL_PROJECT_VERSION}\")\n";
@@ -284,18 +302,22 @@ bool BuildCommand::createBuildCMakeListsFile(const std::string& buildCmakeDir, c
         return false;
     }
     
-    file << "# Use project name from Sail.toml\n";
-    file << "set(CMAKE_CXX_STANDARD 17)\n";
+    file << "# Use project name and C++ standard from Sail.toml\n";
+    file << "set(CMAKE_CXX_STANDARD ${SAIL_CPP_STANDARD})\n";
     file << "set(CMAKE_CXX_STANDARD_REQUIRED ON)\n\n";
     
     if (isBin) {
-        file << "add_executable(${SAIL_PROJECT_NAME}\n";
-        file << "    src/main.cpp\n";
-        file << ")\n";
+        file << "# Collect all source files from src directory\n";
+        file << "file(GLOB_RECURSE PROJECT_SOURCES \"src/*.cpp\")\n\n";
+        file << "add_executable(${SAIL_PROJECT_NAME} ${PROJECT_SOURCES})\n\n";
+        file << "# Add include directory if it exists\n";
+        file << "if(EXISTS \"${CMAKE_CURRENT_SOURCE_DIR}/include\")\n";
+        file << "    target_include_directories(${SAIL_PROJECT_NAME} PRIVATE include)\n";
+        file << "endif()\n";
     } else {
-        file << "add_library(${SAIL_PROJECT_NAME}\n";
-        file << "    src/lib.cpp\n";
-        file << ")\n\n";
+        file << "# Collect all source files from src directory\n";
+        file << "file(GLOB_RECURSE PROJECT_SOURCES \"src/*.cpp\")\n\n";
+        file << "add_library(${SAIL_PROJECT_NAME} ${PROJECT_SOURCES})\n\n";
         file << "target_include_directories(${SAIL_PROJECT_NAME} PUBLIC include)\n";
     }
     
@@ -339,6 +361,39 @@ std::string BuildCommand::getProjectNameFromToml() const {
     }
     
     return "unknown_project";
+}
+
+std::string BuildCommand::getCppStandardFromToml() const {
+    // Simple TOML parsing to get C++ standard
+    std::ifstream file("Sail.toml");
+    if (!file.is_open()) {
+        return "17"; // default
+    }
+    
+    std::string line;
+    bool inPackageSection = false;
+    
+    while (std::getline(file, line)) {
+        if (line.find("[package]") != std::string::npos) {
+            inPackageSection = true;
+            continue;
+        }
+        
+        if (inPackageSection && line.find("[") != std::string::npos && line.find("[package]") == std::string::npos) {
+            // We've left the package section
+            break;
+        }
+        
+        if (inPackageSection && line.find("standard = \"") != std::string::npos) {
+            size_t start = line.find("standard = \"") + 12;
+            size_t end = line.find("\"", start);
+            if (end != std::string::npos) {
+                return line.substr(start, end - start);
+            }
+        }
+    }
+    
+    return "17"; // default
 }
 
 } // namespace sail

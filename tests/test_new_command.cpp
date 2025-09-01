@@ -126,7 +126,10 @@ TEST_CASE("Sail.toml contains correct content", "[new_command]") {
     REQUIRE(fixture.fileContains("test_project/Sail.toml", "[package]"));
     REQUIRE(fixture.fileContains("test_project/Sail.toml", "name = \"test_project\""));
     REQUIRE(fixture.fileContains("test_project/Sail.toml", "version = \"1.0.0\""));
+    REQUIRE(fixture.fileContains("test_project/Sail.toml", "standard = \"17\""));
     REQUIRE(fixture.fileContains("test_project/Sail.toml", "[dependencies]"));
+    // Should NOT contain description
+    REQUIRE_FALSE(fixture.fileContains("test_project/Sail.toml", "description"));
 }
 
 TEST_CASE("NewCommand rejects existing directory", "[new_command]") {

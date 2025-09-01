@@ -17,6 +17,7 @@ public:
     static bool isExecutable(const std::string& path);
     static void makeExecutable(const std::string& path);
     static std::string findProjectRoot(const std::string& startPath = ".");
+    static bool isValidCppStandard(const std::string& standard);
 };
 
 } // namespace sail
