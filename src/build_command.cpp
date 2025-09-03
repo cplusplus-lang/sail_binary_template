@@ -1,9 +1,11 @@
 #include "build_command.h"
 #include "utils.h"
+#include ".sail/embedded_cmake_files.h"
 #include <iostream>
 #include <filesystem>
 #include <fstream>
 #include <cstdlib>
+#include <map>
 
 namespace sail {
 
@@ -125,7 +127,7 @@ bool BuildCommand::copyCPMFile(const std::string& buildDir) const {
 
 int BuildCommand::runCMakeConfigure(const std::string& buildDir, bool release) const {
     std::string buildType = release ? "Release" : "Debug";
-    std::string command = "cmake -B " + buildDir + " -DCMAKE_BUILD_TYPE=" + buildType;
+    std::string command = "cmake -B " + buildDir + " -DCMAKE_BUILD_TYPE=" + buildType + " -DBUILD_BINARY=ON";
     
     std::cout << "Configuring: " << command << std::endl;
     return std::system(command.c_str());
@@ -172,15 +174,15 @@ bool BuildCommand::ensureCMakeStructure() const {
         needsGeneration = true;
     }
     
-    if (!std::filesystem::exists("build/cmake")) {
+    if (!std::filesystem::exists("build/sail")) {
         needsGeneration = true;
     }
     
     if (needsGeneration) {
         std::cout << "Setting up CMake project structure...\n";
         
-        // Create build/cmake directory
-        if (!createBuildCMakeDirectory()) {
+        // Create .sail directory with embedded CMake files
+        if (!createCMakeDirectory()) {
             return false;
         }
         
@@ -204,44 +206,107 @@ bool BuildCommand::createRootCMakeListsFile() const {
     }
     
     file << "# Forwarding CMakeLists.txt - DO NOT EDIT\n";
-    file << "# The actual CMake configuration is in build/cmake/CMakeLists.txt\n\n";
+    file << "# The actual CMake configuration is in build/sail/CMakeLists.txt\n\n";
     file << "cmake_minimum_required(VERSION 3.21)\n\n";
     file << "# Parse Sail.toml for project name and version\n";
-    file << "include(build/cmake/SailToml.cmake)\n";
+    file << "include(build/sail/build/sail_toml.cmake)\n";
     file << "sail_parse_toml()\n\n";
     file << "project(${SAIL_PROJECT_NAME} VERSION ${SAIL_PROJECT_VERSION})\n\n";
-    file << "include(build/cmake/CMakeLists.txt)\n";
+    file << "include(build/sail/CMakeLists.txt)\n";
     
     file.close();
     return true;
 }
 
-bool BuildCommand::createBuildCMakeDirectory() const {
-    std::string buildCmakeDir = "build/cmake";
+bool BuildCommand::createCMakeDirectory() const {
+    std::string sailDir = "build/sail";
     
-    if (!Utils::createDirectoryRecursive(buildCmakeDir)) {
-        std::cerr << "Error: Could not create build/cmake directory\n";
+    if (!Utils::createDirectoryRecursive(sailDir)) {
+        std::cerr << "Error: Could not create build/sail directory\n";
         return false;
     }
     
-    // Create the TOML parsing module
-    if (!createSailTomlModule(buildCmakeDir)) {
-        return false;
-    }
-    
-    // Create the actual CMakeLists.txt
-    std::string projectName = getProjectNameFromToml();
-    bool isBin = !isLibraryProject();
-    
-    if (!createBuildCMakeListsFile(buildCmakeDir, projectName, isBin)) {
+    // Extract all embedded CMake files to build/sail directory
+    if (!extractEmbeddedCMakeFiles(sailDir)) {
         return false;
     }
     
     return true;
 }
 
-bool BuildCommand::createSailTomlModule(const std::string& buildCmakeDir) const {
-    std::string moduleFile = buildCmakeDir + "/SailToml.cmake";
+bool BuildCommand::extractEmbeddedCMakeFiles(const std::string& sailDir) const {
+    // Map of embedded content variables to their file paths
+    std::map<std::string_view, std::string> embeddedFiles = {
+        {embedded_cmake::BUILD_BINARY, sailDir + "/build/binary.cmake"},
+        {embedded_cmake::BUILD_CPM, sailDir + "/build/cpm.cmake"},
+        {embedded_cmake::BUILD_DEPENDENCIES, sailDir + "/build/dependencies.cmake"},
+        {embedded_cmake::BUILD_SAIL_TOML, sailDir + "/build/sail_toml.cmake"},
+        {embedded_cmake::BUILD_TESTS, sailDir + "/build/tests.cmake"},
+        {embedded_cmake::DEPENDENCIES_CATCH2, sailDir + "/dependencies/catch2.cmake"},
+        {embedded_cmake::DEPENDENCIES_FMT, sailDir + "/dependencies/fmt.cmake"},
+        {embedded_cmake::SYSTEM_COMMANDS_GIT, sailDir + "/system/commands/git.cmake"}
+    };
+    
+    // Create necessary directories
+    for (const auto& [content, filePath] : embeddedFiles) {
+        std::filesystem::path path(filePath);
+        std::filesystem::path dir = path.parent_path();
+        
+        if (!std::filesystem::exists(dir)) {
+            if (!Utils::createDirectoryRecursive(dir.string())) {
+                std::cerr << "Error: Could not create directory " << dir << "\n";
+                return false;
+            }
+        }
+        
+        // Write the embedded content to file
+        std::ofstream file(filePath);
+        if (!file.is_open()) {
+            std::cerr << "Error: Could not create file " << filePath << "\n";
+            return false;
+        }
+        
+        file << content;
+        file.close();
+    }
+    
+    // Create main CMakeLists.txt in .sail directory
+    std::string cmakeListsPath = sailDir + "/CMakeLists.txt";
+    std::ofstream cmakeFile(cmakeListsPath);
+    if (!cmakeFile.is_open()) {
+        std::cerr << "Error: Could not create " << cmakeListsPath << "\n";
+        return false;
+    }
+    
+    // Create a main CMakeLists.txt that includes the build system
+    cmakeFile << "# Sail-generated CMake configuration\n";
+    cmakeFile << "# This file is auto-generated from embedded CMake modules\n\n";
+    cmakeFile << "# Build options - must be explicitly set\n";
+    cmakeFile << "option(BUILD_BINARY \"Build the main binary executable\" OFF)\n";
+    cmakeFile << "option(BUILD_TESTS \"Build the test executable\" OFF)\n\n";
+    cmakeFile << "# Ensure at least one build type is selected\n";
+    cmakeFile << "if(NOT BUILD_BINARY AND NOT BUILD_TESTS)\n";
+    cmakeFile << "    message(FATAL_ERROR \"You must specify either -DBUILD_BINARY=ON or -DBUILD_TESTS=ON (or both)\")\n";
+    cmakeFile << "endif()\n\n";
+    cmakeFile << "set(CMAKE_CXX_STANDARD ${SAIL_CPP_STANDARD})\n";
+    cmakeFile << "set(CMAKE_CXX_STANDARD_REQUIRED ON)\n\n";
+    cmakeFile << "# Include dependency management\n";
+    cmakeFile << "include(${CMAKE_CURRENT_LIST_DIR}/build/dependencies.cmake)\n\n";
+    cmakeFile << "# Include binary building logic only if requested\n";
+    cmakeFile << "if(BUILD_BINARY)\n";
+    cmakeFile << "    include(${CMAKE_CURRENT_LIST_DIR}/build/binary.cmake)\n";
+    cmakeFile << "endif()\n\n";
+    cmakeFile << "# Include test building logic only if requested\n";
+    cmakeFile << "if(BUILD_TESTS)\n";
+    cmakeFile << "    include(${CMAKE_CURRENT_LIST_DIR}/build/tests.cmake)\n";
+    cmakeFile << "endif()\n";
+    
+    cmakeFile.close();
+    return true;
+}
+
+bool BuildCommand::createSailTomlModule(const std::string& cmakeDir) const {
+    std::string moduleFile = cmakeDir + "/SailToml.cmake";
     std::ofstream file(moduleFile);
     
     if (!file.is_open()) {
@@ -293,12 +358,12 @@ bool BuildCommand::createSailTomlModule(const std::string& buildCmakeDir) const 
     return true;
 }
 
-bool BuildCommand::createBuildCMakeListsFile(const std::string& buildCmakeDir, const std::string& projectName, bool isBin) const {
-    std::string cmakeFile = buildCmakeDir + "/CMakeLists.txt";
+bool BuildCommand::createCMakeListsFile(const std::string& cmakeDir, const std::string& projectName, bool isBin) const {
+    std::string cmakeFile = cmakeDir + "/CMakeLists.txt";
     std::ofstream file(cmakeFile);
     
     if (!file.is_open()) {
-        std::cerr << "Error: Could not create build/cmake/CMakeLists.txt\n";
+        std::cerr << "Error: Could not create cmake/CMakeLists.txt\n";
         return false;
     }
     

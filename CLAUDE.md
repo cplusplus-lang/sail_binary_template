@@ -9,12 +9,28 @@ This file contains configuration and instructions for Claude Code when working o
 - **Release builds**: `build/release/`
 
 ### Build Commands
-- Debug: `cmake -B build/debug -DCMAKE_BUILD_TYPE=Debug && cmake --build build/debug`
-- Release: `cmake -B build/release -DCMAKE_BUILD_TYPE=Release && cmake --build build/release`
+
+**NOTE**: The build system now requires explicit target selection. You must specify either `-DBUILD_BINARY=ON` for the main executable or `-DBUILD_TESTS=ON` for tests (or both).
+
+#### Binary Only
+- Debug: `cmake -B build/debug -DCMAKE_BUILD_TYPE=Debug -DBUILD_BINARY=ON && cmake --build build/debug`
+- Release: `cmake -B build/release -DCMAKE_BUILD_TYPE=Release -DBUILD_BINARY=ON && cmake --build build/release`
+
+#### Tests Only
+- Debug: `cmake -B build/debug -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON && cmake --build build/debug`
+- Release: `cmake -B build/release -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON && cmake --build build/release`
+
+#### Both Binary and Tests
+- Debug: `cmake -B build/debug -DCMAKE_BUILD_TYPE=Debug -DBUILD_BINARY=ON -DBUILD_TESTS=ON && cmake --build build/debug`
+- Release: `cmake -B build/release -DCMAKE_BUILD_TYPE=Release -DBUILD_BINARY=ON -DBUILD_TESTS=ON && cmake --build build/release`
 
 ### Testing
+
+**NOTE**: Tests are only built when `-DBUILD_TESTS=ON` is specified during configuration.
+
 - Run tests: `ctest --test-dir build/debug` or `ctest --test-dir build/release`
 - Test executable: `build/debug/sail_tests` or `build/release/sail_tests`
+- To build and run tests: First build with tests enabled, then run CTest or the test executable directly
 
 ### Linting and Type Checking
 - Currently no specific lint or typecheck commands configured

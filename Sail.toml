@@ -5,5 +5,8 @@ standard = "23"
 
 [dependencies]
 
+[dev-dependencies]
+catch2 = "3.10.0"
+
 [system.commands]
 git = "*"

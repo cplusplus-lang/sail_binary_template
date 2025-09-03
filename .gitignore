@@ -1,6 +1,5 @@
 # Build directories
-build/
-!build/cmake/
+/build
 cmake-build-*/
 out/
 projects/
@@ -20,7 +19,6 @@ CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
 CTestTestfile.cmake
-*.cmake
 !CMakeLists.txt
 
 # IDE files
@@ -49,3 +47,6 @@ node_modules/
 # Temporary directories
 tmp/
 temp/
+
+# Generated embedded CMake files
+src/.sail/

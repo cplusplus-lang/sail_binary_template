@@ -20,9 +20,10 @@ private:
     // CMake structure generation functions
     bool ensureCMakeStructure() const;
     bool createRootCMakeListsFile() const;
-    bool createBuildCMakeDirectory() const;
-    bool createSailTomlModule(const std::string& buildCmakeDir) const;
-    bool createBuildCMakeListsFile(const std::string& buildCmakeDir, const std::string& projectName, bool isBin) const;
+    bool createCMakeDirectory() const;
+    bool extractEmbeddedCMakeFiles(const std::string& sailDir) const;
+    bool createSailTomlModule(const std::string& cmakeDir) const;
+    bool createCMakeListsFile(const std::string& cmakeDir, const std::string& projectName, bool isBin) const;
     bool isLibraryProject() const;
     std::string getProjectNameFromToml() const;
     std::string getCppStandardFromToml() const;

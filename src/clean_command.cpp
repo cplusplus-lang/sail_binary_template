@@ -71,6 +71,7 @@ int CleanCommand::execute(const std::vector<std::string>& args) {
         // Clean entire build directory (default behavior)
         success = cleanBuildDirectory("build", m_dryRun, m_verbose);
         
+        
         // Also clean generated CMakeLists.txt if it exists
         if (std::filesystem::exists("CMakeLists.txt")) {
             printRemovalMessage("CMakeLists.txt", m_dryRun, m_verbose);

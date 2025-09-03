@@ -32,7 +32,7 @@ Clone and build Sail:
 git clone https://github.com/yourusername/sail.git
 cd sail
 mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_BINARY=ON
 make  # or cmake --build . on Windows
 ```
 
@@ -110,7 +110,7 @@ sail build --release  # Build the library
 
 # Projects use a forwarding CMakeLists.txt structure:
 # - Root CMakeLists.txt: Minimal forwarding file
-# - build/cmake/CMakeLists.txt: Actual build configuration
+# - cmake/CMakeLists.txt: Actual build configuration
 ```
 
 ### Building Projects
@@ -221,20 +221,42 @@ For a C++ project to be installable with Sail, it must:
 
 ## Development
 
+### Build System
+
+**Important**: Starting from v2.1.0, the build system requires explicit target selection. You must specify either `-DBUILD_BINARY=ON` to build the main executable, `-DBUILD_TESTS=ON` to build tests, or both.
+
+#### Build Options
+
+- **`-DBUILD_BINARY=ON`**: Build the main `sail` executable
+- **`-DBUILD_TESTS=ON`**: Build the test suite (`sail_tests`)
+- **Both options can be combined** to build both targets
+
+#### Why This Change?
+
+This separation allows for faster builds when you only need specific targets:
+- **CI/CD pipelines** can build only tests for validation
+- **Distribution builds** can build only the binary without test dependencies
+- **Development** can choose to build both or just what's needed
+
 ### Building from Source
 
 ```bash
 git clone https://github.com/yourusername/sail.git
 cd sail
 
-# Debug build
+# Debug build (binary only)
 mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Debug
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_BINARY=ON
 make
 
-# Release build
+# Release build (binary only)
 mkdir build-release && cd build-release
-cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_BINARY=ON
+make
+
+# Build with tests (for development)
+mkdir build-debug && cd build-debug
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_BINARY=ON -DBUILD_TESTS=ON
 make
 ```
 
@@ -243,8 +265,8 @@ make
 Sail includes comprehensive tests built with Catch2:
 
 ```bash
-# Build and run all tests
-cd build
+# Build and run all tests (requires -DBUILD_TESTS=ON during configuration)
+cd build-debug  # or whichever build directory was configured with tests
 ctest --output-on-failure
 
 # Run specific test categories
@@ -257,6 +279,9 @@ ctest -R "run_command"
 
 # Run tests verbosely
 ctest --verbose
+
+# Or run the test executable directly
+./sail_tests
 ```
 
 ### Test Coverage
