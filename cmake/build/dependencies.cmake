@@ -1,33 +1,9 @@
-# Dependency Management Module
-# Handles dependencies and system commands from Sail.toml
-
-# Dependencies via CPM
-include(${CMAKE_CURRENT_LIST_DIR}/cpm.cmake)
+# System Commands and Global Setup Module
+# Handles system commands from Sail.toml
+# Note: Dependencies are now resolved per-target using dependency_resolver.cmake
 
 # Initialize test link libraries list
 set(SAIL_TEST_LINK_LIBRARIES "")
-
-# Add dependencies from Sail.toml using modular system
-if(SAIL_DEPENDENCY_NAMES AND SAIL_DEPENDENCY_VALUES)
-    foreach(DEP_NAME DEP_VALUE IN ZIP_LISTS SAIL_DEPENDENCY_NAMES SAIL_DEPENDENCY_VALUES)
-        # Convert dependency name to lowercase for file matching
-        string(TOLOWER "${DEP_NAME}" DEP_NAME_LOWER)
-        
-        # Check if we have a specific handler for this dependency
-        set(DEP_HANDLER_FILE "${CMAKE_CURRENT_LIST_DIR}/../dependencies/${DEP_NAME_LOWER}.cmake")
-        if(EXISTS "${DEP_HANDLER_FILE}")
-            # Include the dependency handler
-            include("${DEP_HANDLER_FILE}")
-            
-            # Call the dependency function with regular dependency type
-            cmake_language(CALL "add_${DEP_NAME_LOWER}_dependency" "${DEP_VALUE}" "regular")
-        else()
-            # Fallback for unknown dependencies - try as CPM package directly
-            message(WARNING "No specific handler found for dependency '${DEP_NAME}', trying as direct CPM package")
-            CPMAddPackage("${DEP_VALUE}")
-        endif()
-    endforeach()
-endif()
 
 # Add system command dependencies from Sail.toml
 if(SAIL_SYSTEM_CMD_NAMES AND SAIL_SYSTEM_CMD_VALUES)

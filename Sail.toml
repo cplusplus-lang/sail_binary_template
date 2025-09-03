@@ -1,9 +1,20 @@
 [package]
 name = "sail"
 version = "1.0.0"
-standard = "23"
+standard = "17"
 
 [dependencies]
+# Dependencies can be either:
+# 1. Downloaded packages (using CPM)
+# 2. System libraries (detected locally)
+# The build system will try system first, then download if needed
+
+# System libraries with proper TOML syntax:
+# filesystem = "*"
+# qt = { version = "6", components = ["Core", "Widgets"] }
+# boost = { version = "1.80", components = ["system", "filesystem"] }
+# openssl = "*"
+# fmt = "10.0.0"
 
 [dev-dependencies]
 catch2 = "3.10.0"

@@ -40,6 +40,16 @@ add_executable(${SAIL_PROJECT_NAME}_tests
 
 target_include_directories(${SAIL_PROJECT_NAME}_tests PRIVATE include)
 
+# Include unified dependency resolver
+include(${CMAKE_CURRENT_LIST_DIR}/dependency_resolver.cmake)
+
+# Add filesystem support (required by Sail)
+include(${CMAKE_CURRENT_LIST_DIR}/../system/libraries/filesystem.cmake)
+add_filesystem_support(${SAIL_PROJECT_NAME}_tests)
+
+# Resolve all dependencies (system and downloaded) for tests
+resolve_all_dependencies(${SAIL_PROJECT_NAME}_tests)
+
 # Set output directory for test executable to tests subdirectory
 set_target_properties(${SAIL_PROJECT_NAME}_tests PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests"
