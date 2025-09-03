@@ -1,8 +1,6 @@
 # Binary Building Module
 # Handles building the main binary executable
 
-message(STATUS "=== Binary.cmake is being executed ===")
-
 # Collect all source files from src directory
 file(GLOB_RECURSE PROJECT_SOURCES "src/*.cpp")
 

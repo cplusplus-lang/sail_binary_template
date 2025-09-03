@@ -130,18 +130,12 @@ endfunction()
 
 # Main function to resolve all dependencies
 function(resolve_all_dependencies TARGET_NAME)
-    message(STATUS "=== Dependency Resolution for ${TARGET_NAME} ===")
-    message(STATUS "SAIL_DEPENDENCY_NAMES: '${SAIL_DEPENDENCY_NAMES}'")
-    message(STATUS "SAIL_DEPENDENCY_VALUES: '${SAIL_DEPENDENCY_VALUES}'")
-    
     # Resolve regular dependencies
     if(SAIL_DEPENDENCY_NAMES AND SAIL_DEPENDENCY_VALUES)
         message(STATUS "Resolving regular dependencies for ${TARGET_NAME}")
         foreach(DEP_NAME DEP_VALUE IN ZIP_LISTS SAIL_DEPENDENCY_NAMES SAIL_DEPENDENCY_VALUES)
             resolve_dependency("${DEP_NAME}" "${DEP_VALUE}" "regular" "${TARGET_NAME}")
         endforeach()
-    else()
-        message(STATUS "No regular dependencies found for ${TARGET_NAME}")
     endif()
     
     # Resolve dev-dependencies (only for test targets)

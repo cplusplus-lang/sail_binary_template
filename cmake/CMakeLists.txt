@@ -2,9 +2,6 @@
 option(BUILD_BINARY "Build the main binary executable" OFF)
 option(BUILD_TESTS "Build the test executable" OFF)
 
-message(STATUS "BUILD_BINARY: ${BUILD_BINARY}")
-message(STATUS "BUILD_TESTS: ${BUILD_TESTS}")
-
 # Ensure at least one build type is selected
 if(NOT BUILD_BINARY AND NOT BUILD_TESTS)
     message(FATAL_ERROR "You must specify either -DBUILD_BINARY=ON or -DBUILD_TESTS=ON (or both)")
