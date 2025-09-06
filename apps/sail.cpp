@@ -1,16 +1,8 @@
-#include <array>
-#include <atomic>
-#include <chrono>
-#include <cstddef>
-#include <cstdint>
 #include <cstdlib>
 #include <exception>
 #include <fmt/base.h>
 #include <fmt/format.h>
-#include <functional>
 #include <optional>
-
-#include <random>
 
 #include <CLI/CLI.hpp>
 #include <spdlog/spdlog.h>
@@ -21,13 +13,12 @@
 #include <internal_use_only/config.hpp>
 #include <sail/sample_library.hpp>
 #include <string>
-#include <thread>
-#include <utility>
-#include <vector>
 
 // NOLINTNEXTLINE(bugprone-exception-escape)
 int main(int argc, const char **argv)
 {
+  constexpr int max_factorial_demo = 5;
+  
   try {
     CLI::App app{ fmt::format("{} version {}", sail::cmake::project_name, sail::cmake::project_version) };
 
@@ -59,7 +50,7 @@ int main(int argc, const char **argv)
 
     // Demonstrate sample library integration
     fmt::print("Sample Library Demo:\n");
-    for (int i = 1; i <= 5; ++i) {
+    for (int i = 1; i <= max_factorial_demo; ++i) {
       fmt::print("  factorial({}) = {} (runtime)\n", i, factorial(i));
       fmt::print("  factorial({}) = {} (compile-time)\n", i, factorial_constexpr(i));
     }
