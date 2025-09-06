@@ -1,11 +1,20 @@
 ## Build Instructions
 
 A full build has different steps:
+0) Initialize git submodules (first time only)
 1) Specifying the compiler using environment variables
 2) Configuring the project
 3) Building the project
 
 For the subsequent builds, in case you change the source code, you only need to repeat the last step.
+
+### (0) Initialize Git Submodules
+
+This project uses git submodules that must be initialized before building:
+
+If you cloned with `--recurse-submodules`, this step is already done. Otherwise, run:
+
+    git submodule update --init --recursive
 
 ### (1) Specify the compiler using environment variables
 

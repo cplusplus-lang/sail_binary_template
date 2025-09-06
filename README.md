@@ -45,7 +45,15 @@ setting up your project and committed the changes.
 
 Now you can clone the project locally and get to work!
 
-    git clone https://github.com/<user>/<your_new_repo>.git
+    git clone --recurse-submodules https://github.com/<user>/<your_new_repo>.git
+
+### Working with Submodules
+
+This project includes git submodules that need to be initialized. If you've already cloned the repository without submodules, initialize them with:
+
+    git submodule update --init --recursive
+
+The project includes the `sail_binary_template` submodule which contains the template used for generating new projects.
 
 ## More Details
 
