@@ -36,8 +36,4 @@ function(myproject_setup_dependencies)
     cpmaddpackage("gh:ArthurSonzogni/FTXUI@6.0.2")
   endif()
 
-  if(NOT TARGET tools::tools)
-    cpmaddpackage("gh:lefticus/tools#update_build_system")
-  endif()
-
 endfunction()
