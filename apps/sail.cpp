@@ -1,61 +1,85 @@
 #include <cstdlib>
 #include <exception>
-#include <fmt/base.h>
-#include <fmt/format.h>
-#include <optional>
+#include <filesystem>
+#include <string>
 
 #include <CLI/CLI.hpp>
+#include <fmt/format.h>
+#include <fmt/base.h>
 #include <spdlog/spdlog.h>
 
 // This file will be generated automatically when cur_you run the CMake
 // configuration step. It creates a namespace called `sail`. You can modify
 // the source template at `configured_files/config.hpp.in`.
 #include <internal_use_only/config.hpp>
-#include <sail/sample_library.hpp>
-#include <string>
+#include <sail/template_manager.hpp>
+
+int handle_new_command(const std::string& project_name, const std::filesystem::path& target_directory, bool overwrite) {
+  try {
+    sail::TemplateManager template_manager;
+    
+    if (template_manager.create_project(project_name, target_directory, overwrite)) {
+      return EXIT_SUCCESS;
+    } else {
+      return EXIT_FAILURE;
+    }
+  } catch (const std::exception& e) {
+    spdlog::error("Failed to create project: {}", e.what());
+    return EXIT_FAILURE;
+  }
+}
 
 // NOLINTNEXTLINE(bugprone-exception-escape)
 int main(int argc, const char **argv)
 {
-  constexpr int max_factorial_demo = 5;
-  
   try {
-    CLI::App app{ fmt::format("{} version {}", sail::cmake::project_name, sail::cmake::project_version) };
+    CLI::App app{ fmt::format("{} v{}", sail::cmake::project_name, sail::cmake::project_version) };
+    app.description("A modern C++ project generator and build tool");
+    app.require_subcommand(0, 1); // Allow 0 or 1 subcommand
 
-    std::optional<std::string> message;
-    app.add_option("-m,--message", message, "A message to print back out");
+    // Global flags
     bool show_version = false;
     app.add_flag("--version", show_version, "Show version information");
 
-    bool is_turn_based = false;
-    auto *turn_based = app.add_flag("--turn_based", is_turn_based);
+    // 'new' subcommand
+    auto* new_cmd = app.add_subcommand("new", "Create a new project from template");
+    
+    std::string project_name;
+    new_cmd->add_option("name", project_name, "Name of the new project")
+           ->required();
 
-    bool is_loop_based = false;
-    auto *loop_based = app.add_flag("--loop_based", is_loop_based);
+    std::filesystem::path target_directory = std::filesystem::current_path();
+    new_cmd->add_option("--path", target_directory, "Directory where to create the project")
+           ->check(CLI::ExistingDirectory);
 
-    turn_based->excludes(loop_based);
-    loop_based->excludes(turn_based);
+    bool overwrite = false;
+    new_cmd->add_flag("--overwrite", overwrite, "Overwrite existing files");
 
-
+    // Parse command line
     CLI11_PARSE(app, argc, argv);
 
+    // Handle global flags first
     if (show_version) {
-      fmt::print("{}\n", sail::cmake::project_version);
+      fmt::print("Sail Build Tool v{}\n", sail::cmake::project_version);
+      fmt::print("A modern C++ project generator and build tool\n");
       return EXIT_SUCCESS;
     }
 
-    if (message.has_value()) {
-      fmt::print("Message: {}\n", message.value());
+    // Handle subcommands
+    if (*new_cmd) {
+      return handle_new_command(project_name, target_directory, overwrite);
     }
 
-    // Demonstrate sample library integration
-    fmt::print("Sample Library Demo:\n");
-    for (int i = 1; i <= max_factorial_demo; ++i) {
-      fmt::print("  factorial({}) = {} (runtime)\n", i, factorial(i));
-      fmt::print("  factorial({}) = {} (compile-time)\n", i, factorial_constexpr(i));
+    // If no subcommand was provided, show help
+    if (app.get_subcommands().empty() || app.get_subcommands()[0]->get_name().empty()) {
+      fmt::print("{}\n", app.help());
+      return EXIT_SUCCESS;
     }
+
+    return EXIT_SUCCESS;
 
   } catch (const std::exception &e) {
     spdlog::error("Unhandled exception in main: {}", e.what());
+    return EXIT_FAILURE;
   }
 }

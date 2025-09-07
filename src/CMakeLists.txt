@@ -1,13 +1,13 @@
 include(GenerateExportHeader)
 
 
-add_library(sample_library sample_library.cpp)
+add_library(sample_library sample_library.cpp template_manager.cpp)
 
 
 
 add_library(sail::sample_library ALIAS sample_library)
 
-target_link_libraries(sample_library PRIVATE sail_options sail_warnings)
+target_link_libraries(sample_library PRIVATE sail_options sail_warnings embedded_templates)
 
 target_include_directories(sample_library ${WARNING_GUARD} PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
                                                                   $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>)

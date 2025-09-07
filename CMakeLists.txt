@@ -57,6 +57,13 @@ add_library(sail::sail_warnings ALIAS sail_warnings)
 # configure files based on CMake configuration options
 add_subdirectory(configured_files)
 
+# Template Embedding System
+# Converts sail_binary_template/ directory into embedded C++ code
+# This allows 'sail new' to work without external template files
+# See docs/TEMPLATE_EMBEDDING.md for details
+include(cmake/TemplateEmbedding.cmake)
+sail_setup_template_embedding()
+
 # Adding the src:
 add_subdirectory(src)
 

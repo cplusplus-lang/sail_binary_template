@@ -105,3 +105,39 @@ catch_discover_tests(
   "relaxed_constexpr."
   OUTPUT_SUFFIX
   .xml)
+
+# Add sail new command tests
+add_executable(sail_new_tests sail_new_tests.cpp)
+target_link_libraries(
+  sail_new_tests
+  PRIVATE sail::sail_warnings
+          sail::sail_options
+          sail::sample_library
+          Catch2::Catch2WithMain)
+
+catch_discover_tests(
+  sail_new_tests
+  TEST_PREFIX
+  "sail_new."
+  REPORTER
+  XML
+  OUTPUT_DIR
+  .
+  OUTPUT_PREFIX
+  "sail_new."
+  OUTPUT_SUFFIX
+  .xml)
+
+# Add sail new integration tests
+add_executable(sail_new_integration_tests sail_new_integration_tests.cpp)
+target_link_libraries(
+  sail_new_integration_tests
+  PRIVATE sail::sail_warnings
+          sail::sail_options
+          sail::sample_library
+          Catch2::Catch2WithMain)
+
+catch_discover_tests(
+  sail_new_integration_tests
+  TEST_PREFIX
+  "sail_integration.")
